@@ -5,8 +5,7 @@
 GenerativeConjoint covers the full lifecycle of a conjoint study: survey design, D-optimal design generation, AI-generated stimuli (text and images), participant-facing survey delivery, and export of analysis-ready data.
 It is built for researchers who need full control over their data and infrastructure without commercial licensing costs.
 
-<img width="256" height="256" alt="task27_alt02_industrial_legs_medium" src="https://github.com/user-attachments/assets/559d04fa-198c-4b38-bc8f-fbc28cc5f394" />
-<img width="256" height="256" alt="task21_alt02_functional_wheels_large" src="https://github.com/user-attachments/assets/01023cdc-9052-46f3-b6f5-0d73cc07b72e" />
+<img width="256" height="256" alt="task27_alt02_industrial_legs_medium" src="https://github.com/user-attachments/assets/559d04fa-198c-4b38-bc8f-fbc28cc5f394" /> <img width="256" height="256" alt="task21_alt02_functional_wheels_large" src="https://github.com/user-attachments/assets/01023cdc-9052-46f3-b6f5-0d73cc07b72e" />
 
 ## Features
 
