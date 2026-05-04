@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Share — {{ survey.title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_list') }}">Surveys</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_detail', survey_id=survey.id) }}">{{ survey.title }}</a></li>
+    <li class="breadcrumb-item active">Share</li>
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">Share Survey</h1>
+
+<div class="card mb-4">
+  <div class="card-header">Add Collaborator</div>
+  <div class="card-body">
+    <form method="POST">
+      <div class="mb-3">
+        <label class="form-label">Collaborator's ORCID iD</label>
+        <input type="text" name="orcid" class="form-control font-monospace"
+               placeholder="0000-0000-0000-0000" required
+               pattern="^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$">
+        <div class="form-text">
+          The collaborator must have logged into this tool at least once with their ORCID.
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Collaborator</button>
+    </form>
+  </div>
+</div>
+
+{% if collaborators %}
+<div class="card">
+  <div class="card-header">Current Collaborators</div>
+  <div class="list-group list-group-flush">
+    {% for membership, user in collaborators %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ user.name or 'Unknown' }}</strong>
+        <span class="font-monospace text-muted small ms-2">{{ user.orcid }}</span>
+      </div>
+      <form method="POST"
+            action="{{ url_for('surveys_remove_collaborator', survey_id=survey.id, collab_id=user.id) }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger"
+                onclick="return confirm('Remove this collaborator?')">Remove</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<p class="text-muted">No collaborators yet.</p>
+{% endif %}
+{% endblock %}

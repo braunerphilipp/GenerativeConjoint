@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% block title %}Results — {{ survey.title }}{% endblock %}
+
+{% block content %}
+{% if not public %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_list') }}">Surveys</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_detail', survey_id=survey.id) }}">{{ survey.title }}</a></li>
+    <li class="breadcrumb-item active">Results</li>
+  </ol>
+</nav>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Results — {{ survey.title }}</h1>
+  {% if not public %}
+  <button class="btn btn-outline-secondary btn-sm" id="share-btn" onclick="copyPublicUrl()">
+    <i class="bi bi-share me-1"></i>Share results
+  </button>
+  <input type="hidden" id="public-url" value="{{ public_url }}">
+  {% endif %}
+</div>
+
+<div class="row g-4">
+
+  <!-- Participant statistics -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-people me-1"></i>Participants
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-4">
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="display-6 fw-bold">{{ participant_count }}</div>
+              <div class="text-muted small">Total participants</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="display-6 fw-bold text-success">{{ completed_count }}</div>
+              <div class="text-muted small">
+                Completed
+                {% if participant_count > 0 %}
+                <span class="ms-1">({{ (completed_count / participant_count * 100) | round(1) }}%)</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="display-6 fw-bold text-warning">{{ active_count }}</div>
+              <div class="text-muted small">
+                Active now
+                <br><span style="font-size:.7rem">(response in last 60 s)</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center h-100">
+              <div class="display-6 fw-bold text-danger">{{ dropout_count }}</div>
+              <div class="text-muted small">
+                Dropouts
+                {% if participant_count > 0 %}
+                <span class="ms-1">({{ (dropout_count / participant_count * 100) | round(1) }}%)</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if dur_stats or first_completed or last_completed %}
+        <h6 class="fw-semibold mb-3">Survey Duration ({{ dur_stats.n if dur_stats else 0 }} completed response{{ 's' if not dur_stats or dur_stats.n != 1 }})</h6>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center {% if not dur_stats %}bg-light{% endif %}">
+              <div class="h4 fw-bold mb-0 {% if not dur_stats %}text-muted{% endif %}">{{ dur_stats.mean if dur_stats else '—' }}</div>
+              <div class="text-muted small">Mean</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center {% if not dur_stats %}bg-light{% endif %}">
+              <div class="h4 fw-bold mb-0 {% if not dur_stats %}text-muted{% endif %}">{{ dur_stats.median if dur_stats else '—' }}</div>
+              <div class="text-muted small">Median</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center {% if not first_completed %}bg-light{% endif %}">
+              <div class="h4 fw-bold mb-0 {% if not first_completed %}text-muted{% endif %}">{{ first_completed or '—' }}</div>
+              <div class="text-muted small">First completion</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="border rounded p-3 text-center {% if not last_completed %}bg-light{% endif %}">
+              <div class="h4 fw-bold mb-0 {% if not last_completed %}text-muted{% endif %}">{{ last_completed or '—' }}</div>
+              <div class="text-muted small">Last completion</div>
+            </div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="border rounded p-3 text-center {% if not dur_stats or not dur_stats.p25 %}bg-light{% endif %}">
+              <div class="h4 fw-bold mb-0 {% if not dur_stats or not dur_stats.p25 %}text-muted{% endif %}">
+                {% if dur_stats and dur_stats.p25 %}
+                  ({{ dur_stats.p25 }} &mdash; {{ dur_stats.p75 }})
+                {% else %}
+                  &mdash;
+                {% endif %}
+              </div>
+              <div class="text-muted small">
+                25th percentile &mdash; 75th percentile
+                {% if not dur_stats or not dur_stats.p25 %}<br><span style="font-size:.7rem">(needs ≥ 4 responses)</span>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Duration statistics will be available once at least one participant completes the survey.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Part-worth utilities -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-bar-chart-horizontal me-1"></i>Part-Worth Utilities
+      </div>
+      <div class="card-body">
+        {% if part_worths %}
+        {% set colors = ['#0d6efd','#198754','#fd7e14','#6f42c1','#20c997','#d63384'] %}
+        <p class="small text-muted mb-3">
+          Relative attribute importance estimated from responses (win-rate method, no MNL model; live and preliminary).
+        </p>
+
+        <!-- Importance overview bar -->
+        <div class="d-flex rounded overflow-hidden border mb-2" style="height:80px">
+          {% for item in part_worths %}
+          <div style="width:{{ item.importance }}%; background:{{ colors[loop.index0 % 6] }}"
+               class="d-flex flex-column justify-content-center align-items-center text-white overflow-hidden px-1"
+               title="{{ item.name }}: {{ item.importance }}%">
+            {% if item.importance >= 10 %}
+            <div class="fw-semibold text-truncate w-100 text-center" style="font-size:.72rem; line-height:1.2">{{ item.name }}</div>
+            <div style="font-size:.68rem; opacity:.85; line-height:1.2">{{ item.importance }}%</div>
+            {% elif item.importance >= 5 %}
+            <div style="font-size:.65rem; opacity:.85">{{ item.importance }}%</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="mb-4">
+          {% for item in part_worths %}
+          <span class="badge me-1 mb-1" style="background:{{ colors[loop.index0 % 6] }}; font-size:.7rem">
+            {{ item.name }} {{ item.importance }}%
+          </span>
+          {% endfor %}
+        </div>
+
+        <!-- Per-attribute level utilities -->
+        {% for item in part_worths %}
+        {% set color = colors[loop.index0 % 6] %}
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-baseline mb-2">
+            <span class="fw-semibold" style="color:{{ color }}">{{ item.name }}</span>
+            <span class="text-muted small">importance {{ item.importance }}%</span>
+          </div>
+          {% for lv in item.levels %}
+          <div class="d-flex align-items-center mb-2 gap-2">
+            <div class="text-end text-muted" style="width:140px; font-size:.85rem; flex-shrink:0">{{ lv.name }}</div>
+            <div class="flex-grow-1 position-relative" style="height:20px; background:#f0f0f0; border-radius:4px; overflow:hidden">
+              <div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:#ced4da; z-index:1"></div>
+              {% if lv.utility >= 0 %}
+              <div style="position:absolute; left:50%; width:{{ lv.utility }}%; top:0; bottom:0; background:{{ color }}; opacity:.85; border-radius:0 4px 4px 0"></div>
+              {% else %}
+              <div style="position:absolute; left:{{ 50 + lv.utility }}%; width:{{ lv.utility | abs }}%; top:0; bottom:0; background:{{ color }}; opacity:.45; border-radius:4px 0 0 4px"></div>
+              {% endif %}
+            </div>
+            <div class="text-muted" style="width:50px; font-size:.8rem; flex-shrink:0">
+              {% if lv.utility > 0 %}+{% endif %}{{ lv.utility }}
+            </div>
+            <div class="text-muted" style="width:60px; font-size:.75rem; flex-shrink:0">
+              n={{ lv.n_shown }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <p class="text-muted">Part-worth utilities will be shown after more than five participants have completed the survey.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not public %}
+<script>
+function copyPublicUrl() {
+  const url = document.getElementById('public-url').value;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('share-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Link copied!';
+    btn.classList.replace('btn-outline-secondary', 'btn-success');
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.classList.replace('btn-success', 'btn-outline-secondary');
+    }, 2000);
+  });
+}
+</script>
+{% endif %}
+{% endblock %}

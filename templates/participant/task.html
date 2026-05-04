@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task {{ task_index + 1 }} of {{ total_tasks }}</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body { background: #f8f9fa; }
+
+    /* ── Page header ── */
+    .conjoint-header {
+      background: #fff;
+      border-bottom: 1px solid #dee2e6;
+      padding: .75rem 0;
+    }
+
+    /* ── Table ── */
+    .conjoint-table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    /* Attribute (label) column — invisible, right-aligned */
+    .conjoint-table .attr-col {
+      border: none !important;
+      background: transparent !important;
+      text-align: right;
+      vertical-align: middle;
+      padding-right: 1.25rem;
+      min-width: 160px;
+      color: #212529;
+    }
+
+    /* Option columns — framed, pointer cursor */
+    .conjoint-table .opt-col {
+      min-width: 130px;
+      cursor: pointer;
+      transition: background-color .15s;
+      vertical-align: middle;
+    }
+
+    /* Selected column highlight */
+    .conjoint-table .opt-col.selected {
+      background-color: #e8f0fe !important;
+    }
+
+    /* Select-row indicator pill */
+    .select-indicator {
+      display: inline-block;
+      padding: .35rem 1.4rem;
+      border: 2px solid #ced4da;
+      border-radius: 2rem;
+      font-size: .85rem;
+      font-weight: 500;
+      color: #6c757d;
+      transition: border-color .15s, background .15s, color .15s;
+      user-select: none;
+    }
+    .opt-col.selected .select-indicator {
+      border-color: #0d6efd;
+      background: #0d6efd;
+      color: #fff;
+    }
+
+    /* Level text */
+    .level-name { font-weight: 600; }
+    .level-desc { font-size: .8rem; color: #6c757d; }
+
+    /* ── Textual option cards ── */
+    .opt-card {
+      cursor: pointer;
+      transition: background-color .15s, border-color .15s;
+      border: 2px solid #dee2e6;
+    }
+    .opt-card:hover { border-color: #adb5bd; }
+    .opt-card.selected {
+      background-color: #e8f0fe !important;
+      border-color: #0d6efd !important;
+    }
+    .opt-card .select-indicator {
+      display: inline-block;
+      padding: .35rem 1.4rem;
+      border: 2px solid #ced4da;
+      border-radius: 2rem;
+      font-size: .85rem;
+      font-weight: 500;
+      color: #6c757d;
+      transition: border-color .15s, background .15s, color .15s;
+      user-select: none;
+    }
+    .opt-card.selected .select-indicator {
+      border-color: #0d6efd;
+      background: #0d6efd;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<div class="conjoint-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">{{ survey.title }}</span>
+      <span class="text-muted small">Task {{ task_index + 1 }} / {{ total_tasks }}</span>
+    </div>
+    <div class="progress mt-2" style="height:4px">
+      <div class="progress-bar" style="width:{{ progress }}%"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container py-4">
+
+  <p class="text-center text-muted mb-4">
+    Please compare the following options and select the one you prefer.
+  </p>
+
+  <form method="POST" id="task-form">
+    <input type="hidden" name="task_load_ms" id="task-load-ms" value="">
+
+    {% if survey.presentation_type == 'tabular' %}
+    <div class="table-responsive mb-3">
+      <table class="table table-bordered conjoint-table align-middle bg-white">
+
+        <!-- Header row: blank attr cell + one header per option -->
+        <thead>
+          <tr>
+            <th class="attr-col border-0"></th>
+            {% for i in range(survey.num_alternatives) %}
+            <th class="text-center opt-col fw-semibold" data-alt="{{ i }}">
+              Option {{ i + 1 }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+
+        <tbody>
+          <!-- One row per attribute -->
+          {% for attr in attributes %}
+          <tr>
+            <td class="attr-col">
+              <span class="fw-semibold">{{ attr.name }}</span>
+              {% if attr.description %}
+              <div class="small text-muted">{{ attr.description }}</div>
+              {% endif %}
+            </td>
+            {% for i in range(survey.num_alternatives) %}
+            <td class="text-center opt-col" data-alt="{{ i }}">
+              <span class="level-name">{{ alternatives[i][attr.id].name }}</span>
+              {% if alternatives[i][attr.id].description %}
+              <div class="level-desc">{{ alternatives[i][attr.id].description }}</div>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+
+          <!-- Selection row -->
+          <tr>
+            <td class="attr-col border-0"></td>
+            {% for i in range(survey.num_alternatives) %}
+            <td class="text-center opt-col select-cell" data-alt="{{ i }}">
+              <input type="radio" name="choice" id="choice{{ i }}" value="{{ i }}"
+                     class="visually-hidden" required>
+              <span class="select-indicator">Select</span>
+            </td>
+            {% endfor %}
+          </tr>
+        </tbody>
+
+      </table>
+    </div>
+    {% endif %}
+
+    {% if survey.presentation_type == 'textual' %}
+    <div class="row g-3 mb-3 justify-content-center">
+      {% for i in range(survey.num_alternatives) %}
+      <div class="{% if survey.num_alternatives == 2 %}col-md-6{% elif survey.num_alternatives == 3 %}col-md-4{% else %}col-12 col-md-6{% endif %}">
+        <div class="card h-100 opt-card" data-alt="{{ i }}">
+          <div class="card-body">
+            <p class="mb-0" style="line-height:1.7">{{ generated_texts.get(i, '') }}</p>
+          </div>
+          <div class="card-footer text-center bg-transparent">
+            <input type="radio" name="choice" id="choice{{ i }}" value="{{ i }}"
+                   class="visually-hidden" required>
+            <span class="select-indicator">Select</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if survey.presentation_type == 'visual' %}
+    <div class="row g-3 mb-3 justify-content-center">
+      {% for i in range(survey.num_alternatives) %}
+      <div class="{% if survey.num_alternatives == 2 %}col-md-6{% elif survey.num_alternatives == 3 %}col-md-4{% else %}col-12 col-md-6{% endif %}">
+        <div class="card h-100 opt-card" data-alt="{{ i }}">
+          <div class="card-body p-2 text-center">
+            <img src="/surveys/{{ survey.id }}/images/{{ design_task_idx }}/{{ i }}/thumb"
+                 alt="Option {{ i + 1 }}"
+                 class="img-fluid rounded" style="max-height:300px;width:auto">
+          </div>
+          <div class="card-footer text-center bg-transparent">
+            <input type="radio" name="choice" id="choice{{ i }}" value="{{ i }}"
+                   class="visually-hidden" required>
+            <span class="select-indicator">Select</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not survey.auto_advance %}
+    <div class="d-flex justify-content-between align-items-center mt-2">
+      <span class="text-muted small">Select one option, then click Next.</span>
+      <button type="submit" class="btn btn-primary px-4">
+        {% if task_index + 1 == total_tasks %}Finish{% else %}Next{% endif %}
+        <i class="bi bi-arrow-right ms-1"></i>
+      </button>
+    </div>
+    {% endif %}
+
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const AUTO_ADVANCE = {{ 'true' if survey.auto_advance else 'false' }};
+
+// Click any selectable element (tabular cell or textual card)
+document.querySelectorAll('.opt-col, .opt-card').forEach(el => {
+  el.addEventListener('click', () => selectChoice(parseInt(el.dataset.alt)));
+});
+
+function selectChoice(alt) {
+  document.getElementById('choice' + alt).checked = true;
+
+  // Highlight all elements belonging to the chosen alternative
+  document.querySelectorAll('.opt-col, .opt-card').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.dataset.alt) === alt);
+  });
+
+  if (AUTO_ADVANCE) {
+    setTimeout(() => document.getElementById('task-form').submit(), 350);
+  }
+}
+
+// Keyboard / assistive-tech: respond to direct radio changes too
+document.querySelectorAll('input[name=choice]').forEach(radio => {
+  radio.addEventListener('change', () => selectChoice(parseInt(radio.value)));
+});
+
+document.getElementById('task-load-ms').value = Date.now();
+</script>
+</body>
+</html>

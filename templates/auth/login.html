@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Conjoint Module{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-6 col-lg-5">
+
+    <div class="mb-4">
+      <h1 class="h4 fw-bold mb-2">Conjoint Module</h1>
+      <p class="text-muted small mb-0">
+        A lightweight, embeddable
+        <a href="https://en.wikipedia.org/wiki/Conjoint_analysis" target="_blank"
+           rel="noopener" class="text-muted">conjoint analysis</a>
+        module for survey research.
+      </p>
+    </div>
+
+    <p class="small">
+      Conjoint analysis (considered jointly) presents respondents with structured
+      choice tasks — profiles varying across pre-defined attributes and levels — and
+      recovers part-worth utilities via discrete-choice modelling.
+      This module is designed to be embedded as a block inside an existing survey platform
+      via a shared participant key; data are exported in R-ready format.
+    </p>
+
+    <p class="small">
+      Optionally, <strong>generative AI</strong> can be used to (1) suggest attributes and
+      levels from a free-text study description, (2) render alternatives as coherent
+      natural-language vignettes, or (3) generate scenario images — all intended to improve
+      scenario evocation and reduce satisficing in participants.
+    </p>
+
+    <p class="small text-muted">
+      D-optimal designs are generated via coordinate exchange on an effects-coded
+      information matrix, initialised from a level-balanced random start.
+    </p>
+
+    <hr class="my-4">
+
+    <div class="text-center">
+      <a href="{{ url_for('auth_orcid') }}"
+         class="btn btn-success d-inline-flex align-items-center gap-2 px-4">
+        <img src="https://orcid.org/sites/default/files/images/orcid_24x24.png"
+             width="20" height="20" alt="ORCID logo">
+        Log in with ORCID
+      </a>
+      <p class="text-muted small mt-2 mb-0">
+        No account registration required.
+        Authentication is delegated entirely to
+        <a href="https://orcid.org" target="_blank" rel="noopener"
+           class="text-muted">ORCID</a>;
+        only your iD and public name are stored.
+      </p>
+    </div>
+
+    <p class="text-muted small mt-4 mb-0">
+      Created by
+      <a href="https://orcid.org/0000-0002-0715-8517" target="_blank"
+         rel="noopener" class="text-muted">Philipp Brauner</a>.
+    </p>
+
+  </div>
+</div>
+{% endblock %}

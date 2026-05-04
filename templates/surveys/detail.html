@@ -1,0 +1,490 @@
+{% extends 'base.html' %}
+{% block title %}{{ survey.title }}{% endblock %}
+
+{% block head %}
+<style>
+.prompt-tooltip .tooltip-inner {
+  max-width: 420px;
+  text-align: left;
+  font-size: .75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_list') }}">Surveys</a></li>
+    <li class="breadcrumb-item active">{{ survey.title }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h3 mb-1">{{ survey.title }}</h1>
+    {% if survey.description %}
+    <p class="text-muted mb-0">{{ survey.description }}</p>
+    {% endif %}
+  </div>
+  {% if is_owner %}
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('surveys_edit', survey_id=survey.id) }}"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Edit
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% if is_owner and survey.design_stale %}
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+  <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
+  <div class="flex-grow-1">
+    <strong>Design needs to be generated.</strong>
+    The survey configuration has changed (attributes, tasks, alternatives, or blocking).
+    Participants cannot start until a design is generated.
+  </div>
+  <form method="POST" action="{{ url_for('surveys_generate_design', survey_id=survey.id) }}" class="flex-shrink-0">
+    <button type="submit" class="btn btn-warning btn-sm fw-semibold">
+      <i class="bi bi-gear-fill me-1"></i>Generate Design Now
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md">
+        <div class="card text-center py-3">
+          <div class="h4 mb-0">{{ survey.num_tasks }}</div>
+          <div class="small text-muted">Tasks</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card text-center py-3">
+          <div class="h4 mb-0">{{ survey.num_alternatives }}</div>
+          <div class="small text-muted">Alternatives</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card text-center py-3">
+          <div class="h4 mb-0">{{ num_blocks }}</div>
+          <div class="small text-muted">Block{{ 's' if num_blocks != 1 }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card text-center py-3">
+          <div class="h4 mb-0">{{ design_tasks * survey.num_alternatives }}</div>
+          <div class="small text-muted">Profiles</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card text-center py-3">
+          <div class="h4 mb-0">{{ participant_count }}</div>
+          <div class="small text-muted">Started</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card text-center py-3">
+          <div class="h4 mb-0">{{ completed_count }}</div>
+          <div class="small text-muted">Completed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attributes -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span>📊 Attributes &amp; Levels</span>
+        <a href="{{ url_for('surveys_design_details', survey_id=survey.id) }}"
+           class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.8rem">
+          <i class="bi bi-card-list me-1"></i>See details
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Attribute</th>
+              <th>Levels</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attr in attributes %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td>
+                <strong>{{ attr.name }}</strong>
+                {% if attr.description %}
+                <div class="small text-muted">{{ attr.description }}</div>
+                {% endif %}
+              </td>
+              <td>
+                {% for lv in attr.levels %}
+                <span class="badge bg-light text-dark border me-1">{{ lv.name }}</span>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Missing stimuli warning -->
+    {% if missing_stimuli > 0 %}
+    <div class="alert alert-danger mb-4">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      <strong>Incomplete stimuli.</strong>
+      {{ missing_stimuli }} stimulus{{ 'i are' if missing_stimuli != 1 else ' is' }} missing.
+      Participants may encounter blank options until generation is complete.
+      <a href="{{ url_for('surveys_inspect_design', survey_id=survey.id) }}#stimuli"
+         class="alert-link ms-1">Inspect &amp; generate missing</a>
+    </div>
+    {% endif %}
+
+    <!-- Duplicate profiles warning -->
+    {% if survey.has_duplicate_profiles %}
+    <div class="alert alert-warning mb-4">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      <strong>Duplicate alternatives detected.</strong>
+      {{ survey.duplicate_profile_count }} of {{ design_tasks }}
+      choice task{{ 's' if design_tasks != 1 else '' }} contain{{ '' if design_tasks != 1 else 's' }} two identical profiles.
+      This reduces the information value of those tasks.
+      Consider adding more attributes or levels, or reducing the number of alternatives per task, then regenerate the design.
+    </div>
+    {% endif %}
+
+    <!-- Design info -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">🛠️ Design</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Language</dt>
+          <dd class="col-sm-7">{{ survey.language or 'English' }}</dd>
+          <dt class="col-sm-5">Presentation</dt>
+          <dd class="col-sm-7 text-capitalize">{{ survey.presentation_type }}</dd>
+          <dt class="col-sm-5">Tasks per participant</dt>
+          <dd class="col-sm-7">{{ survey.num_tasks }}</dd>
+          {% if survey.pool_size and survey.pool_size > survey.num_tasks %}
+          <dt class="col-sm-5">Design pool size</dt>
+          <dd class="col-sm-7">
+            {{ survey.pool_size }} tasks
+            <div class="small text-muted">Blocked design — each participant sees a random {{ survey.num_tasks }}-task subset.</div>
+          </dd>
+          {% endif %}
+          <dt class="col-sm-5">Status</dt>
+          <dd class="col-sm-7">
+            {% if survey.design_generated %}
+            <span class="badge bg-success">Generated</span>
+            {% else %}
+            <span class="badge bg-warning text-dark">Not generated</span>
+            {% endif %}
+          </dd>
+          {% if survey.d_efficiency %}
+          <dt class="col-sm-5">D-efficiency</dt>
+          <dd class="col-sm-7">{{ '%.4f' | format(survey.d_efficiency) }}</dd>
+          {% endif %}
+          <dt class="col-sm-5">Suggested participants</dt>
+          <dd class="col-sm-7">
+            min. {{ min_n }} &nbsp;·&nbsp; recommended {{ rec_n }}
+            <div class="small text-muted">Orme (2010): n ≥ 500 × L / (T × J)</div>
+          </dd>
+        </dl>
+        {% if is_owner %}
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+          <form method="POST" action="{{ url_for('surveys_generate_design', survey_id=survey.id) }}">
+            <button type="submit"
+                    class="btn btn-sm {% if survey.design_stale %}btn-warning fw-semibold{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-{% if survey.design_stale %}gear-fill{% else %}arrow-clockwise{% endif %} me-1"></i>
+              {% if not survey.design_generated %}Generate Design{% else %}Regenerate Design{% endif %}
+            </button>
+          </form>
+          {% if survey.design_generated %}
+          <a href="{{ url_for('surveys_inspect_design', survey_id=survey.id) }}"
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-table me-1"></i>Inspect Design
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+<div class="row g-4 mt-0">
+
+  <div class="col-lg-6">
+
+    <!-- Survey Integration -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-link-45deg me-1"></i>Survey Integration
+      </div>
+      <div class="card-body">
+        <p class="fw-bold mb-2">Entry Link to this survey</p>
+        <p class="small text-muted">
+          Embed this URL in your external survey tool.
+          Replace <code>YOUR_KEY</code> with your participant identifier variable.
+        </p>
+        <div class="input-group">
+          <input type="text" id="entry-url" class="form-control form-control-sm font-monospace"
+                 value="{{ entry_url }}?key=YOUR_KEY" readonly>
+          <button class="btn btn-outline-secondary btn-sm" type="button"
+                  onclick="copyEntryUrl()">
+            <i class="bi bi-clipboard" id="copy-icon"></i>
+          </button>
+        </div>
+
+        {% if is_owner %}
+        <hr class="my-3">
+        <div class="small fw-semibold mb-1">Redirect URL After Completion</div>
+        <form method="POST"
+              action="{{ url_for('surveys_update_redirect', survey_id=survey.id) }}">
+          <div class="input-group input-group-sm">
+            <input type="text" name="redirect_url" class="form-control font-monospace"
+                   value="{{ survey.redirect_url or '' }}"
+                   placeholder="https://yoursurvey.com/continue?id=%KEY%">
+            <button type="submit" class="btn btn-outline-secondary">Save</button>
+          </div>
+          <div class="form-text">
+            Use <code>%KEY%</code> for the participant's external key.
+            Leave blank for no redirect.
+          </div>
+        </form>
+        {% elif survey.redirect_url %}
+        <div class="small text-muted mt-2">
+          <i class="bi bi-arrow-right-circle me-1"></i>Redirects to:
+          <code>{{ survey.redirect_url }}</code>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Collaborators / Access -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-people me-1"></i>Access
+      </div>
+      <div class="list-group list-group-flush">
+        {% for membership, user in collaborators %}
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+          <div class="small">
+            <strong>{{ user.name or 'Unknown' }}</strong>
+            <span class="text-muted ms-1">{{ user.orcid }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{{ 'primary' if membership.role == 'owner' else 'secondary' }}">
+              {{ membership.role }}
+            </span>
+            {% if is_owner and membership.role != 'owner' %}
+            <form method="POST"
+                  action="{{ url_for('surveys_remove_collaborator', survey_id=survey.id, collab_id=user.id) }}">
+              <button type="submit" class="btn btn-sm btn-link text-danger p-0 lh-1"
+                      onclick="return confirm('Remove {{ user.name or user.orcid }}?')"
+                      title="Remove collaborator">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+
+        {% if pending_invites %}
+        {% for invite in pending_invites %}
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+          <div class="small">
+            <span class="text-muted fst-italic">{{ invite.orcid }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-warning text-dark">pending</span>
+            <form method="POST"
+                  action="{{ url_for('surveys_remove_invite', survey_id=survey.id, invite_id=invite.id) }}">
+              <button type="submit" class="btn btn-sm btn-link text-danger p-0 lh-1"
+                      title="Cancel invite">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if is_owner %}
+      <div class="card-footer bg-transparent">
+        <form method="POST" action="{{ url_for('surveys_invite', survey_id=survey.id) }}"
+              class="d-flex gap-2">
+          <input type="text" name="orcid" class="form-control form-control-sm font-monospace"
+                 placeholder="0000-0000-0000-0000" pattern="\d{4}-\d{4}-\d{4}-\d{3}[\dX]"
+                 title="ORCID in format 0000-0000-0000-0000" required>
+          <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
+            <i class="bi bi-person-plus me-1"></i>Invite
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+  <div class="col-lg-6">
+
+    <!-- Results Overview -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span>🤓 Results Overview</span>
+        <a href="{{ url_for('surveys_results', survey_id=survey.id) }}"
+           class="btn btn-sm btn-outline-secondary">See details</a>
+      </div>
+      <div class="card-body pb-3">
+        {% if part_worths %}
+        {% set colors = ['#0d6efd','#198754','#fd7e14','#6f42c1','#20c997','#d63384'] %}
+        <p class="small text-muted mb-2">
+          Relative attribute importance estimated from responses (win-rate method, no MNL model; live and preliminary, based on {{ completed_count }} participant{{ 's' if completed_count != 1 }}).
+        </p>
+        <div class="d-flex rounded overflow-hidden border mb-2" style="height:80px">
+          {% for item in part_worths %}
+          <div style="width:{{ item.importance }}%; background:{{ colors[loop.index0 % 6] }}"
+               class="d-flex flex-column justify-content-center align-items-center text-white overflow-hidden px-1"
+               title="{{ item.name }}: {{ item.importance }}%">
+            {% if item.importance >= 10 %}
+            <div class="fw-semibold text-truncate w-100 text-center" style="font-size:.72rem; line-height:1.2">{{ item.name }}</div>
+            <div style="font-size:.68rem; opacity:.85; line-height:1.2">{{ item.importance }}%</div>
+            {% elif item.importance >= 5 %}
+            <div style="font-size:.65rem; opacity:.85">{{ item.importance }}%</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div>
+          {% for item in part_worths %}
+          <span class="badge me-1 mb-1" style="background:{{ colors[loop.index0 % 6] }}; font-size:.7rem">
+            {{ item.name }} {{ item.importance }}%
+          </span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Will be shown after more than five participants have completed the survey.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Export & actions -->
+    <div class="card">
+      <div class="card-header fw-semibold">📦 Actions</div>
+      <div class="card-body d-grid gap-2">
+        <a href="{{ url_for('surveys_export', survey_id=survey.id) }}"
+           class="btn btn-success">
+          <i class="bi bi-download me-1"></i>Export Data (.zip)
+        </a>
+        <small class="text-muted text-center">
+          Includes <code>responses.csv</code>, <code>design_matrix.csv</code>,
+          <code>description.md</code>, and an R starter script.
+          {% if survey.presentation_type == 'textual' and survey.texts_generated %}
+          Also <code>generated_texts.csv</code>.
+          {% endif %}
+          {% if survey.presentation_type == 'visual' and survey.images_generated %}
+          Also an <code>images/</code> folder with PNG files and <code>image_prompts.csv</code>.
+          {% endif %}
+        </small>
+        {% if is_owner %}
+        <hr class="my-1">
+        <button type="button" class="btn btn-outline-danger w-100"
+                data-bs-toggle="modal" data-bs-target="#clearResponsesModal">
+          <i class="bi bi-trash3 me-1"></i>Delete All Responses
+        </button>
+        {% endif %}
+        {% if not is_owner %}
+        <hr class="my-1">
+        <form method="POST" action="{{ url_for('surveys_leave', survey_id=survey.id) }}">
+          <button type="submit" class="btn btn-outline-danger w-100"
+                  onclick="return confirm('Leave this survey?')">Leave Survey</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% if is_owner %}
+<!-- Clear responses confirmation modal -->
+<div class="modal fade" id="clearResponsesModal" tabindex="-1"
+     aria-labelledby="clearResponsesModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="clearResponsesModalLabel">
+          <i class="bi bi-exclamation-triangle text-danger me-2"></i>Delete All Responses
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>This will permanently delete all participant data and responses for this survey.
+           This cannot be undone.</p>
+        <p class="mb-1">To confirm, type the survey name:</p>
+        <p class="fw-semibold font-monospace mb-2">{{ survey.title }}</p>
+        <input type="text" id="confirm-survey-name" class="form-control"
+               placeholder="Survey name" autocomplete="off">
+        <div class="invalid-feedback" id="name-mismatch">
+          Name does not match. Please try again.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="POST"
+              action="{{ url_for('surveys_clear_responses', survey_id=survey.id) }}"
+              id="clear-responses-form">
+          <button type="submit" class="btn btn-danger" id="confirm-clear-btn" disabled>
+            Delete All Responses
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialise Bootstrap tooltips (used for prompt previews)
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { trigger: 'hover focus', delay: { show: 400, hide: 100 } });
+  });
+});
+
+function copyEntryUrl() {
+  const el = document.getElementById('entry-url');
+  navigator.clipboard.writeText(el.value).then(() => {
+    const icon = document.getElementById('copy-icon');
+    icon.className = 'bi bi-check2';
+    setTimeout(() => { icon.className = 'bi bi-clipboard'; }, 2000);
+  });
+}
+
+{% if is_owner %}
+const SURVEY_TITLE = {{ survey.title | tojson }};
+const nameInput = document.getElementById('confirm-survey-name');
+const confirmBtn = document.getElementById('confirm-clear-btn');
+
+nameInput.addEventListener('input', () => {
+  const match = nameInput.value === SURVEY_TITLE;
+  confirmBtn.disabled = !match;
+  nameInput.classList.toggle('is-invalid', nameInput.value.length > 0 && !match);
+  nameInput.classList.toggle('is-valid', match);
+});
+
+document.getElementById('clearResponsesModal').addEventListener('hidden.bs.modal', () => {
+  nameInput.value = '';
+  nameInput.className = 'form-control';
+  confirmBtn.disabled = true;
+});
+{% endif %}
+</script>
+{% endblock %}

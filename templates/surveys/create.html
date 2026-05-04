@@ -1,0 +1,1464 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if survey else 'New' }} Survey{% endblock %}
+
+{% block head %}
+<style>
+/* ── Wizard step indicator ── */
+.wizard-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 2rem;
+}
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 1rem;
+  border-radius: 2rem;
+  font-size: .9rem;
+  color: #6c757d;
+  background: transparent;
+  white-space: nowrap;
+}
+.wizard-step.active {
+  background: #0d6efd;
+  color: #fff;
+  font-weight: 600;
+}
+.wizard-step.done {
+  background: #e7f1ff;
+  color: #0d6efd;
+}
+.wizard-sep {
+  flex: 1;
+  height: 2px;
+  background: #dee2e6;
+  margin: 0 .25rem;
+}
+.wizard-sep.done { background: #0d6efd; }
+
+/* ── AI spinner on button ── */
+.ai-btn .spinner { display: none; }
+.ai-btn.loading .spinner { display: inline-block; }
+.ai-btn.loading .ai-icon { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_list') }}">Surveys</a></li>
+    {% if survey %}
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('surveys_detail', survey_id=survey.id) }}">{{ survey.title }}</a>
+    </li>
+    <li class="breadcrumb-item active">Edit</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Survey</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">{{ 'Edit Survey' if survey else 'Create New Survey' }}</h1>
+
+<!-- Step indicator -->
+<div class="wizard-nav" id="wizard-nav">
+  <div class="wizard-step active" id="ws-1">
+    <i class="bi bi-info-circle"></i> <span>1. Basic Info</span>
+  </div>
+  <div class="wizard-sep" id="sep-1"></div>
+  <div class="wizard-step" id="ws-2">
+    <i class="bi bi-list-ul"></i> <span>2. Attributes</span>
+  </div>
+  <div class="wizard-sep" id="sep-2"></div>
+  <div class="wizard-step" id="ws-3">
+    <i class="bi bi-image"></i> <span>3. Presentation</span>
+  </div>
+  <div class="wizard-sep" id="sep-3"></div>
+  <div class="wizard-step" id="ws-4">
+    <i class="bi bi-sliders"></i> <span>4. Tasks</span>
+  </div>
+  <div class="wizard-sep" id="sep-4"></div>
+  <div class="wizard-step" id="ws-5">
+    <i class="bi bi-chat-left-text"></i> <span>5. Introduction</span>
+  </div>
+</div>
+
+<form id="survey-form"
+      method="POST"
+      action="{{ url_for('surveys_edit', survey_id=survey.id) if survey else url_for('surveys_new') }}">
+  <input type="hidden" id="form-data" name="form_data">
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE 1 — Basic Information
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="page-1" class="wizard-page">
+    <div class="card">
+      <div class="card-header fw-semibold">Basic Information</div>
+      <div class="card-body">
+        <div class="mb-4">
+          <label class="form-label fw-semibold" for="title">
+            Survey Title <span class="text-danger">*</span>
+          </label>
+          <input type="text" id="title" class="form-control form-control-lg"
+                 value="{{ survey.title if survey else '' }}"
+                 placeholder="e.g., Housing Preference Study">
+          <div class="form-text">Used in the header shown to participants and in the export file name.</div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold" for="language">Survey Language</label>
+          <input type="text" id="language" class="form-control"
+                 list="language-options"
+                 value="{{ survey.language if survey else 'English' }}"
+                 placeholder="English"
+                 autocomplete="off">
+          <datalist id="language-options">
+            <option value="Afrikaans"><option value="Albanian"><option value="Arabic">
+            <option value="Basque"><option value="Bengali"><option value="Bulgarian">
+            <option value="Catalan"><option value="Chinese (Simplified)">
+            <option value="Chinese (Traditional)"><option value="Croatian">
+            <option value="Czech"><option value="Danish"><option value="Dutch">
+            <option value="English"><option value="Estonian"><option value="Finnish">
+            <option value="French"><option value="Galician"><option value="German">
+            <option value="Greek"><option value="Hebrew"><option value="Hindi">
+            <option value="Hungarian"><option value="Indonesian"><option value="Irish">
+            <option value="Italian"><option value="Japanese"><option value="Korean">
+            <option value="Latvian"><option value="Lithuanian"><option value="Macedonian">
+            <option value="Malay"><option value="Maltese"><option value="Norwegian">
+            <option value="Persian"><option value="Polish"><option value="Portuguese">
+            <option value="Romanian"><option value="Russian"><option value="Serbian">
+            <option value="Slovak"><option value="Slovenian"><option value="Spanish">
+            <option value="Swahili"><option value="Swedish"><option value="Thai">
+            <option value="Turkish"><option value="Ukrainian"><option value="Urdu">
+            <option value="Vietnamese"><option value="Welsh">
+          </datalist>
+          <div class="form-text">
+            Used to signal the response language to AI features. Does not translate the interface.
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label fw-semibold" for="description">Description</label>
+          <textarea id="description" class="form-control" rows="5"
+                    placeholder="Describe the research context. This is only shown to administrators, not participants.">{{ survey.description if survey else '' }}</textarea>
+          <div class="form-text">
+            The description is also used by the <strong>AI attribute suggestion</strong> on the next page,
+            so the more detail you provide here, the better the suggestions will be.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE 2 — Attributes & Levels
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="page-2" class="wizard-page d-none">
+    <div class="card">
+      <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold me-auto">Attributes &amp; Levels</span>
+        <button type="button" id="ai-suggest-btn"
+                class="btn btn-sm btn-outline-info ai-btn"
+                onclick="suggestWithAI()"
+                title="Uses the title and description from page 1">
+          <span class="ai-icon"><i class="bi bi-stars me-1"></i>Suggest with AI</span>
+          <span class="spinner spinner-border spinner-border-sm me-1" role="status"></span>
+          <span class="loading-text d-none">Asking AI…</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                id="add-attr-btn" onclick="addAttribute()">
+          <i class="bi bi-plus-lg me-1"></i>Add Attribute
+        </button>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Define 1–6 attributes. Each attribute needs 2–4 levels.
+          Drag <i class="bi bi-grip-vertical"></i> to reorder attributes or levels within an attribute.
+        </p>
+        <div id="ai-error" class="alert alert-danger d-none small py-2"></div>
+        <div id="attributes-container"></div>
+        <div id="level-balance-warning" class="alert alert-warning small py-2 mt-2 d-none">
+          <i class="bi bi-info-circle me-1"></i>
+          Attributes have different numbers of levels.
+          Designs with equal numbers of levels per attribute are preferred for generating research design suggestions.
+        </div>
+        <div id="profile-count-warning" class="alert alert-warning small py-2 mt-2 d-none">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          <span id="profile-count-text"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE 3 — Presentation & Configuration
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="page-3" class="wizard-page d-none">
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">Presentation Format</div>
+      <div class="card-body">
+        <div class="row g-3" id="pres-type-group">
+          <div class="col-md-4">
+            <input type="radio" class="btn-check" name="pres_type_radio"
+                   id="pres_tabular" value="tabular" autocomplete="off"
+                   {% if not survey or survey.presentation_type == 'tabular' %}checked{% endif %}>
+            <label class="btn btn-outline-secondary w-100 text-start p-3" for="pres_tabular">
+              <i class="bi bi-table d-block fs-4 mb-1"></i>
+              <strong>Tabular</strong>
+              <div class="small text-muted mt-1">Attributes as rows, alternatives as columns</div>
+            </label>
+          </div>
+          <div class="col-md-4">
+            <input type="radio" class="btn-check" name="pres_type_radio"
+                   id="pres_textual" value="textual" autocomplete="off"
+                   {% if survey and survey.presentation_type == 'textual' %}checked{% endif %}>
+            <label class="btn btn-outline-secondary w-100 text-start p-3" for="pres_textual">
+              <i class="bi bi-text-paragraph d-block fs-4 mb-1"></i>
+              <strong>Textual</strong>
+              <div class="small text-muted mt-1">AI-generated scenario descriptions</div>
+            </label>
+          </div>
+          <div class="col-md-4">
+            <input type="radio" class="btn-check" name="pres_type_radio"
+                   id="pres_visual" value="visual" autocomplete="off"
+                   {% if survey and survey.presentation_type == 'visual' %}checked{% endif %}>
+            <label class="btn btn-outline-secondary w-100 text-start p-3" for="pres_visual">
+              <i class="bi bi-image d-block fs-4 mb-1"></i>
+              <strong>Visual</strong>
+              <div class="small text-muted mt-1">AI-generated images (DALL-E)</div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabular options (visible only when Tabular is selected) -->
+    <div class="card mb-4 {% if survey and survey.presentation_type != 'tabular' %}d-none{% endif %}"
+         id="tabular-config-card">
+      <div class="card-header fw-semibold">Tabular Options</div>
+      <div class="card-body">
+        <label class="form-label fw-semibold small mb-2">Attribute Order</label>
+        {% set cur_mode = survey.attr_order_mode if survey and survey.attr_order_mode else 'none' %}
+        <div class="d-flex flex-column gap-1">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="attr_order_radio"
+                   id="ao-none" value="none" {% if cur_mode == 'none' %}checked{% endif %}>
+            <label class="form-check-label" for="ao-none">No randomization</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="attr_order_radio"
+                   id="ao-participant" value="participant" {% if cur_mode == 'participant' %}checked{% endif %}>
+            <label class="form-check-label" for="ao-participant">Randomize per participant</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="attr_order_radio"
+                   id="ao-task" value="task" {% if cur_mode == 'task' %}checked{% endif %}>
+            <label class="form-check-label" for="ao-task">Randomize per choice task</label>
+          </div>
+        </div>
+        <div class="form-text mt-2">
+          <em>Per participant</em>: attribute rows are shuffled once per session and kept consistent across tasks.
+          <em>Per choice task</em>: rows are reshuffled for every task independently.
+        </div>
+      </div>
+    </div>
+
+    <!-- Text Generation Prompt (visible only when Textual is selected) -->
+    <div class="card mb-4 {% if not survey or survey.presentation_type != 'textual' %}d-none{% endif %}"
+         id="textual-config-card">
+      <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold me-auto">
+          <i class="bi bi-stars me-1"></i>Text Generation Prompt
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-primary ai-btn" id="gen-text-prompt-btn"
+                onclick="generateTextPrompt()">
+          <span class="ai-icon"><i class="bi bi-magic me-1"></i>Generate by AI</span>
+          <span class="spinner spinner-border spinner-border-sm me-1 d-none" role="status"></span>
+          <span class="loading-text d-none">Generating…</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="resetTextPrompt()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to template
+        </button>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          This prompt is sent to the AI for each option in the design.
+          The option's attribute–level profile is automatically appended.
+          Use the prompt to control style, length, and how visibly the attributes are embedded.
+          Generate the texts from the survey detail page after saving.
+        </p>
+        <textarea id="text_prompt" class="form-control font-monospace small" rows="8"
+                  placeholder="Instructions for generating option descriptions…">{{ survey.text_prompt if survey and survey.text_prompt else '' }}</textarea>
+        <div class="form-text mt-1">
+          The profile is appended as <em>Attribute: Level</em> pairs.
+          Saving the survey invalidates previously generated texts.
+        </div>
+        <div id="text-prompt-result" class="alert mt-2 d-none py-2 small"></div>
+
+        <div class="border rounded p-3 mt-3" style="background:#f8f9fa">
+          <div class="d-flex justify-content-between align-items-baseline mb-2">
+            <span class="small fw-semibold text-muted">
+              <i class="bi bi-paperclip me-1"></i>Example profile appended to your prompt:
+            </span>
+            <button type="button" class="btn btn-sm btn-link text-muted p-0 lh-1"
+                    onclick="updateTextPromptPreview()" title="Pick a different random example">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+          </div>
+          <pre class="mb-0 small text-secondary" id="text-prompt-preview"
+               style="white-space:pre-wrap;font-family:inherit"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Generation Prompt (visible only when Visual is selected) -->
+    <div class="card mb-4 {% if not survey or survey.presentation_type != 'visual' %}d-none{% endif %}"
+         id="visual-config-card">
+      <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold me-auto">
+          <i class="bi bi-image me-1"></i>Image Generation Prompt
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-info ai-btn" id="optimize-img-btn"
+                onclick="optimizeImagePrompt()">
+          <span class="ai-icon"><i class="bi bi-stars me-1"></i>Optimize Prompt</span>
+          <span class="spinner spinner-border spinner-border-sm me-1" role="status"></span>
+          <span class="loading-text d-none">Optimizing…</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ai-btn" id="feedback-img-btn"
+                onclick="imageFeedback()">
+          <span class="ai-icon"><i class="bi bi-chat-dots me-1"></i>Get Feedback</span>
+          <span class="spinner spinner-border spinner-border-sm me-1" role="status"></span>
+          <span class="loading-text d-none">Evaluating…</span>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small mb-1">Image Generation Model</label>
+          <div class="d-flex gap-4">
+            {% set cur_model = survey.image_model if survey and survey.image_model else 'gpt-image-2' %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_model_radio"
+                     id="img-model-gpt2" value="gpt-image-2"
+                     {% if cur_model in ('gpt-image-2', 'chatgpt-image-latest') %}checked{% endif %}>
+              <label class="form-check-label" for="img-model-gpt2">GPT Image 2 <span class="badge bg-primary ms-1" style="font-size:.65rem">New</span></label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_model_radio"
+                     id="img-model-gpt1" value="gpt-image-1"
+                     {% if cur_model == 'gpt-image-1' %}checked{% endif %}>
+              <label class="form-check-label" for="img-model-gpt1">GPT Image 1</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_model_radio"
+                     id="img-model-gpt1mini" value="gpt-image-1-mini"
+                     {% if cur_model == 'gpt-image-1-mini' %}checked{% endif %}>
+              <label class="form-check-label" for="img-model-gpt1mini">GPT Image 1 Mini</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_model_radio"
+                     id="img-model-dalle3" value="dall-e-3"
+                     {% if cur_model == 'dall-e-3' %}checked{% endif %}>
+              <label class="form-check-label" for="img-model-dalle3">DALL-E 3</label>
+            </div>
+          </div>
+          <div class="form-text">All models use 1024×1024. GPT Image 2 is the default; GPT Image 1 Mini is faster and cheaper; DALL-E 3 maps Low/Medium → Standard, High → HD.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small mb-1">Image Quality</label>
+          <div class="d-flex gap-4">
+            {% set cur_quality = survey.image_quality if survey and survey.image_quality else 'medium' %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_quality_radio"
+                     id="img-quality-low" value="low"
+                     {% if cur_quality == 'low' %}checked{% endif %}>
+              <label class="form-check-label" for="img-quality-low">Low</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_quality_radio"
+                     id="img-quality-medium" value="medium"
+                     {% if cur_quality == 'medium' or cur_quality not in ('low', 'high') %}checked{% endif %}>
+              <label class="form-check-label" for="img-quality-medium">Medium</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="image_quality_radio"
+                     id="img-quality-high" value="high"
+                     {% if cur_quality == 'high' %}checked{% endif %}>
+              <label class="form-check-label" for="img-quality-high">High</label>
+            </div>
+          </div>
+          <div class="form-text">For DALL-E 3: low/medium → standard, high → HD.</div>
+        </div>
+        <p class="text-muted small mb-3">
+          This base prompt is sent to the image model for each design profile;
+          the profile's attribute–level details are automatically appended.
+          Write the prompt in detail and be very specific: describe the visual style
+          (e.g. <em>ink drawing</em>, <em>technical blueprint</em>, <em>flat-colour illustration</em>),
+          the composition, lighting, and background.
+          Explicit style instructions reduce variance across generated images and keep the
+          stimulus set visually consistent.
+          Instruct the model to include no text, labels, or captions in the image.
+          Generate images from the Inspect Design page after saving.
+        </p>
+        <textarea id="image_prompt" class="form-control font-monospace small" rows="4"
+                  placeholder="Base prompt for image generation, e.g.: A realistic product photo of a consumer device on a neutral background.">{{ survey.image_prompt if survey and survey.image_prompt else '' }}</textarea>
+        <div id="img-prompt-result" class="alert mt-2 d-none py-2 small"></div>
+
+        <div class="border rounded p-3 mt-3" style="background:#f8f9fa">
+          <div class="d-flex justify-content-between align-items-baseline mb-2">
+            <span class="small fw-semibold text-muted">
+              <i class="bi bi-paperclip me-1"></i>Example profile appended to your prompt:
+            </span>
+            <button type="button" class="btn btn-sm btn-link text-muted p-0 lh-1"
+                    onclick="updateImagePromptPreview()" title="Pick a different random example">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+          </div>
+          <pre class="mb-0 small text-secondary" id="image-prompt-preview"
+               style="white-space:pre-wrap;font-family:inherit"></pre>
+        </div>
+
+        <div id="img-count-info" class="alert alert-light small mt-2 py-2 d-none">
+          <i class="bi bi-info-circle me-1"></i><span id="img-count-text"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE 4 — Task Configuration
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="page-4" class="wizard-page d-none">
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">Task Configuration</div>
+      <div class="card-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label" for="num_tasks">Tasks per participant</label>
+            <input type="number" id="num_tasks" class="form-control"
+                   min="4" max="30"
+                   value="{{ survey.num_tasks if survey else 8 }}"
+                   oninput="updateSampleSize()">
+            <div class="form-text">Recommended: 8–16</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="num_alternatives">Alternatives per task</label>
+            <input type="number" id="num_alternatives" class="form-control"
+                   min="2" max="5"
+                   value="{{ survey.num_alternatives if survey else 2 }}"
+                   oninput="updateSampleSize()">
+            <div class="form-text">Typically 2–3</div>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-1">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox"
+                   id="auto_advance"
+                   {% if not survey or survey.auto_advance %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="auto_advance">
+              Automatically advance to the next task after selection
+            </label>
+          </div>
+          <div class="form-text">
+            When on, the survey moves forward as soon as the participant clicks an option.
+            When off, participants must click "Next" to confirm and continue.
+          </div>
+        </div>
+
+        <div class="alert alert-info mb-0 mt-3" id="sample-size-box">
+          <strong><i class="bi bi-calculator me-1"></i>Estimated sample size</strong>
+          <div class="mt-1">
+            Minimum: <strong id="sample-min">—</strong> &nbsp;·&nbsp;
+            Recommended: <strong id="sample-recommended">—</strong> respondents
+          </div>
+          <div class="small text-muted mt-1">
+            Orme (2010) heuristic: n ≥ 500 × L / (T × J),
+            where L = max levels per attribute, T = tasks, J = alternatives.
+            Practical minimum: 200 respondents for stable estimates.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-semibold d-flex align-items-center gap-2">
+        <span class="me-auto">Blocked Design (optional)</span>
+        <span class="badge bg-secondary">Advanced</span>
+      </div>
+      <div class="card-body">
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="use_blocked"
+                 {% if survey and survey.pool_size and survey.pool_size > survey.num_tasks %}checked{% endif %}
+                 onchange="toggleBlockedDesign()">
+          <label class="form-check-label fw-semibold" for="use_blocked">
+            Generate a larger pool of tasks (blocked design)
+          </label>
+        </div>
+        <div id="blocked-config" class="{% if not survey or not survey.pool_size or survey.pool_size <= (survey.num_tasks or 8) %}d-none{% endif %}">
+          <p class="text-muted small mb-3">
+            In a blocked design, a larger pool of tasks is generated and each participant is randomly assigned a subset.
+            This increases design efficiency when many participants are expected.
+            Each participant still sees only <strong id="blocked-tasks-label">{{ survey.num_tasks if survey else 8 }}</strong> tasks.
+          </p>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label" for="num_blocks">Number of blocks</label>
+              <input type="number" id="num_blocks" class="form-control"
+                     min="2" max="32"
+                     value="{{ (survey.pool_size // survey.num_tasks) if survey and survey.pool_size and survey.pool_size > survey.num_tasks else '' }}"
+                     oninput="validateNumBlocks()">
+              <div class="form-text">
+                Suggested: <strong id="suggested-num-blocks">—</strong> blocks
+                (<strong id="suggested-pool-size-label">—</strong> total tasks).
+                Each participant sees <strong id="blocked-tasks-label2">{{ survey.num_tasks if survey else 8 }}</strong> tasks from their assigned block.
+              </div>
+            </div>
+          </div>
+          <div id="pool-size-warning" class="alert alert-warning small py-2 mt-2 d-none">
+            Number of blocks must be at least 2.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAGE 5 — Participant Introduction
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="page-5" class="wizard-page d-none">
+    <div class="card">
+      <div class="card-header d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold me-auto">Participant Introduction</span>
+        <button type="button" id="intro-reset-btn"
+                class="btn btn-sm btn-outline-secondary"
+                onclick="resetIntroPrompt()"
+                title="Replace with the default LLM prompt template based on current settings">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to prompt template
+        </button>
+        <button type="button" id="intro-ai-btn"
+                class="btn btn-sm btn-outline-info ai-btn"
+                onclick="generateIntro()">
+          <span class="ai-icon"><i class="bi bi-stars me-1"></i>Generate with AI</span>
+          <span class="spinner spinner-border spinner-border-sm me-1" role="status"></span>
+          <span class="loading-text d-none">Generating…</span>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" role="switch" id="show_intro"
+                 {% if not survey or survey.show_intro is none or survey.show_intro %}checked{% endif %}
+                 onchange="toggleIntroSection()">
+          <label class="form-check-label fw-semibold" for="show_intro">
+            Show introduction page to participants
+          </label>
+          <div class="form-text">When disabled, participants go directly to the first choice task.</div>
+        </div>
+
+        <div id="intro-section">
+          <p class="text-muted small mb-3">
+            This text is shown to participants on a dedicated page before the first choice task.
+            Participants must check a consent checkbox before they can start.
+            <br>
+            <strong>Workflow:</strong> the textarea is pre-filled with a prompt template ready
+            to send to an LLM. Click <em>Generate with AI</em> to replace it with the
+            finished introduction text, then edit as needed.
+          </p>
+          <div id="intro-error" class="alert alert-danger d-none small py-2"></div>
+          <textarea id="intro_text" class="form-control font-monospace small" rows="14"
+                    placeholder="Leave blank to skip the introduction page.">{{ survey.intro_text if survey and survey.intro_text else '' }}</textarea>
+          <div class="form-text mt-1">
+            Tip: the prompt template references all attributes and levels defined on page 2,
+            so <em>Reset to prompt template</em> after changing attributes to get an updated prompt.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="d-flex gap-2 mt-4">
+    <button type="button" id="btn-prev"
+            class="btn btn-outline-secondary d-none" onclick="prevPage()">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </button>
+    <button type="button" id="btn-next"
+            class="btn btn-primary ms-auto" onclick="nextPage()">
+      Next <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+    <button type="button" id="btn-submit"
+            class="btn btn-success ms-auto d-none" onclick="submitSurveyForm()">
+      <i class="bi bi-check2-circle me-1"></i>
+      {{ 'Save and Regenerate Design' if survey else 'Create Survey and Generate Design' }}
+    </button>
+    <a href="{{ url_for('surveys_detail', survey_id=survey.id) if survey else url_for('surveys_list') }}"
+       class="btn btn-link text-muted">Cancel</a>
+  </div>
+</form>
+
+<!-- ── Templates (hidden, cloned by JS) ──────────────────────────────────── -->
+
+<template id="attr-template">
+  <div class="attribute-card card mb-3">
+    <div class="card-header d-flex align-items-center gap-2 py-2">
+      <span class="drag-handle text-muted" style="cursor:grab">
+        <i class="bi bi-grip-vertical fs-5"></i>
+      </span>
+      <span class="attr-number fw-semibold small text-muted"></span>
+      <input type="text" class="form-control form-control-sm attr-name ms-1"
+             placeholder="Attribute name (e.g., Monthly rent)" required>
+      <button type="button" class="btn btn-sm btn-outline-info ai-btn attr-ai-btn py-1 px-2"
+              onclick="generateAttrDetails(this)"
+              title="Generate participant descriptions and LLM hints with AI">
+        <span class="ai-icon"><i class="bi bi-stars"></i></span>
+        <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+      </button>
+      <button type="button" class="btn btn-sm btn-link text-danger ms-auto p-0"
+              onclick="deleteAttrCard(this)" title="Remove attribute">
+        <i class="bi bi-trash3"></i>
+      </button>
+    </div>
+    <div class="card-body pb-2">
+      <div class="mb-3">
+        <label class="form-label small text-muted mb-1">Description <span class="text-muted">(shown to participants)</span></label>
+        <textarea class="form-control form-control-sm attr-description" rows="2"
+                  placeholder="One sentence shown below the attribute name in the choice table."></textarea>
+      </div>
+      <div class="levels-header d-flex align-items-center mb-2">
+        <span class="small fw-semibold text-muted me-auto">Levels</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary add-level-btn"
+                onclick="addLevel(this)">
+          <i class="bi bi-plus-sm me-1"></i>Add Level
+        </button>
+      </div>
+      <div class="levels-container"></div>
+    </div>
+  </div>
+</template>
+
+<template id="level-template">
+  <div class="level-row border rounded px-3 py-2 mb-2">
+    <div class="d-flex gap-2 align-items-start">
+      <span class="drag-handle-level text-muted mt-2" style="cursor:grab">
+        <i class="bi bi-grip-vertical"></i>
+      </span>
+      <div class="flex-grow-1">
+        <div class="input-group input-group-sm mb-1">
+          <span class="input-group-text">Name</span>
+          <input type="text" class="form-control level-name"
+                 placeholder="e.g., €800 / month" required>
+        </div>
+        <div class="input-group input-group-sm mb-1">
+          <span class="input-group-text">Description</span>
+          <input type="text" class="form-control level-description"
+                 placeholder="Shown to participants (optional)">
+        </div>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">LLM Hint</span>
+          <input type="text" class="form-control level-llm-hint"
+                 placeholder="Extra context for AI generation (optional)">
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm btn-link text-danger p-0 mt-2"
+              onclick="removeLevel(this)" title="Remove level">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Pre-existing data (edit mode) ────────────────────────────────────────
+const INITIAL_INTRO = {% if survey and survey.intro_text %}{{ survey.intro_text | tojson }}{% else %}null{% endif %};
+
+const INITIAL_ATTRS = {% if survey and survey.attributes %}[
+  {% for a in survey.attributes %}
+  {
+    name: {{ a.name | tojson }},
+    description: {{ (a.description or '') | tojson }},
+    levels: [
+      {% for l in a.levels %}
+      { name: {{ l.name | tojson }}, description: {{ (l.description or '') | tojson }}, llm_hint: {{ (l.llm_hint or '') | tojson }} }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+]{% else %}null{% endif %};
+
+// ── Wizard state ─────────────────────────────────────────────────────────
+let currentPage = 1;
+const TOTAL_PAGES = 5;
+const MAX_ATTRS = 6;
+const MIN_LEVELS = 2;
+const MAX_LEVELS = 4;
+
+// ── Boot ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Init attribute sortable
+  new Sortable(document.getElementById('attributes-container'), {
+    animation: 150,
+    handle: '.drag-handle',
+    onEnd: () => { updateAttrNumbers(); updateSampleSize(); },
+  });
+
+  // Pre-populate
+  if (INITIAL_ATTRS && INITIAL_ATTRS.length) {
+    INITIAL_ATTRS.forEach(a => addAttribute(a));
+  } else {
+    addAttribute();
+    addAttribute();
+  }
+
+  // Pre-select presentation type in edit mode
+  {% if survey %}
+  const r = document.querySelector('input[name=pres_type_radio][value="{{ survey.presentation_type }}"]');
+  if (r) r.checked = true;
+  {% endif %}
+
+  showPage(1);
+  updateSampleSize();
+});
+
+// ── Wizard navigation ─────────────────────────────────────────────────────
+function showPage(n) {
+  currentPage = n;
+  for (let i = 1; i <= TOTAL_PAGES; i++) {
+    document.getElementById(`page-${i}`).classList.toggle('d-none', i !== n);
+    const ws = document.getElementById(`ws-${i}`);
+    ws.classList.toggle('active', i === n);
+    ws.classList.toggle('done', i < n);
+    if (i < TOTAL_PAGES) {
+      document.getElementById(`sep-${i}`).classList.toggle('done', i < n);
+    }
+  }
+  document.getElementById('btn-prev').classList.toggle('d-none', n === 1);
+  document.getElementById('btn-next').classList.toggle('d-none', n === TOTAL_PAGES);
+  document.getElementById('btn-submit').classList.toggle('d-none', n !== TOTAL_PAGES);
+  if (n === 4) { updateSampleSize(); updatePoolSizeSuggestion(); }
+  if (n === 5) { _populateIntroIfEmpty(); toggleIntroSection(); }
+}
+
+function nextPage() {
+  if (!validatePage(currentPage)) return;
+  if (currentPage < TOTAL_PAGES) showPage(currentPage + 1);
+}
+
+function prevPage() {
+  if (currentPage > 1) showPage(currentPage - 1);
+}
+
+function validatePage(n) {
+  if (n === 1) {
+    const t = document.getElementById('title').value.trim();
+    if (!t) { alert('Please enter a survey title.'); return false; }
+  }
+  if (n === 2) {
+    const cards = document.querySelectorAll('.attribute-card');
+    if (cards.length < 1) { alert('Add at least one attribute.'); return false; }
+    let ok = true;
+    cards.forEach((card, i) => {
+      if (!ok) return;
+      if (!card.querySelector('.attr-name').value.trim()) {
+        alert(`Attribute ${i+1} needs a name.`); ok = false; return;
+      }
+      card.querySelectorAll('.level-row').forEach((row, j) => {
+        if (!ok) return;
+        if (!row.querySelector('.level-name').value.trim()) {
+          alert(`Attribute ${i+1}, level ${j+1} needs a name.`); ok = false;
+        }
+      });
+    });
+    if (!ok) return false;
+  }
+  return true;
+}
+
+// ── Attributes ────────────────────────────────────────────────────────────
+function addAttribute(data = null) {
+  const container = document.getElementById('attributes-container');
+  if (container.querySelectorAll('.attribute-card').length >= MAX_ATTRS) {
+    alert(`Maximum ${MAX_ATTRS} attributes allowed.`);
+    return;
+  }
+
+  const tmpl = document.getElementById('attr-template').content.cloneNode(true);
+  const card = tmpl.querySelector('.attribute-card');
+
+  if (data) {
+    card.querySelector('.attr-name').value = data.name || '';
+    card.querySelector('.attr-description').value = data.description || '';
+  }
+
+  container.appendChild(tmpl);
+  const addedCard = container.lastElementChild;
+
+  // Init level sortable for this card
+  new Sortable(addedCard.querySelector('.levels-container'), {
+    animation: 150,
+    handle: '.drag-handle-level',
+    onEnd: updateSampleSize,
+  });
+
+  if (data && data.levels && data.levels.length) {
+    data.levels.forEach(l => addLevel(addedCard.querySelector('.add-level-btn'), l));
+  } else {
+    addLevel(addedCard.querySelector('.add-level-btn'));
+    addLevel(addedCard.querySelector('.add-level-btn'));
+  }
+
+  updateAttrNumbers();
+  document.getElementById('add-attr-btn').disabled =
+    container.querySelectorAll('.attribute-card').length >= MAX_ATTRS;
+  updateSampleSize();
+}
+
+function deleteAttrCard(btn) {
+  const container = document.getElementById('attributes-container');
+  if (container.querySelectorAll('.attribute-card').length <= 1) {
+    alert('A survey needs at least one attribute.'); return;
+  }
+  btn.closest('.attribute-card').remove();
+  updateAttrNumbers();
+  document.getElementById('add-attr-btn').disabled = false;
+  updateSampleSize();
+}
+
+function updateAttrNumbers() {
+  document.querySelectorAll('.attribute-card').forEach((c, i) => {
+    c.querySelector('.attr-number').textContent = `Attribute ${i + 1}`;
+  });
+}
+
+// ── Levels ────────────────────────────────────────────────────────────────
+function addLevel(btn, data = null) {
+  const card = btn.closest('.attribute-card');
+  const lc = card.querySelector('.levels-container');
+  if (lc.querySelectorAll('.level-row').length >= MAX_LEVELS) {
+    alert(`Maximum ${MAX_LEVELS} levels per attribute.`); return;
+  }
+
+  const tmpl = document.getElementById('level-template').content.cloneNode(true);
+  const row = tmpl.querySelector('.level-row');
+  if (data) {
+    row.querySelector('.level-name').value = data.name || '';
+    row.querySelector('.level-description').value = data.description || '';
+    row.querySelector('.level-llm-hint').value = data.llm_hint || '';
+  }
+  lc.appendChild(tmpl);
+  updateLevelBtns(card);
+  updateSampleSize();
+}
+
+function removeLevel(btn) {
+  const card = btn.closest('.attribute-card');
+  const lc = card.querySelector('.levels-container');
+  if (lc.querySelectorAll('.level-row').length <= MIN_LEVELS) {
+    alert(`Each attribute needs at least ${MIN_LEVELS} levels.`); return;
+  }
+  btn.closest('.level-row').remove();
+  updateLevelBtns(card);
+  updateSampleSize();
+}
+
+function updateLevelBtns(card) {
+  const rows = card.querySelectorAll('.level-row');
+  rows.forEach(r => {
+    r.querySelector('button[onclick="removeLevel(this)"]').disabled = rows.length <= MIN_LEVELS;
+  });
+  card.querySelector('.add-level-btn').disabled = rows.length >= MAX_LEVELS;
+}
+
+function checkLevelBalance() {
+  const counts = [...document.querySelectorAll('.attribute-card')]
+    .map(c => c.querySelectorAll('.level-row').length);
+  const unequal = counts.length > 1 && counts.some(n => n !== counts[0]);
+  document.getElementById('level-balance-warning').classList.toggle('d-none', !unequal);
+
+  const total = counts.reduce((a, b) => a * b, 1);
+  const warn  = document.getElementById('profile-count-warning');
+  const text  = document.getElementById('profile-count-text');
+  if (counts.length > 0 && total > 32) {
+    text.textContent = `This attribute structure yields ${total} unique profiles (${counts.join(' × ')}). `
+      + `AI stimuli generation will create one image or text per unique profile — consider whether the generation cost is acceptable.`;
+    warn.classList.remove('d-none');
+  } else {
+    warn.classList.add('d-none');
+  }
+}
+
+// ── AI: generate attr descriptions + LLM hints ───────────────────────────
+async function generateAttrDetails(btn) {
+  const card     = btn.closest('.attribute-card');
+  const attrName = card.querySelector('.attr-name').value.trim();
+  if (!attrName) { alert('Enter an attribute name first.'); return; }
+
+  // Collect named levels and remember their row index for write-back
+  const levelData = [];
+  card.querySelectorAll('.level-row').forEach((row, idx) => {
+    const name = row.querySelector('.level-name').value.trim();
+    if (name) levelData.push({ idx, name });
+  });
+  if (!levelData.length) { alert('Add at least one level name first.'); return; }
+
+  const title       = document.getElementById('title').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const language    = document.getElementById('language').value.trim() || 'English';
+  const presType    = document.querySelector('input[name=pres_type_radio]:checked')?.value || 'tabular';
+
+  btn.classList.add('loading'); btn.disabled = true;
+  try {
+    const resp = await fetch('/api/generate-attr-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title, description, language,
+        presentation_type: presType,
+        attribute_name: attrName,
+        levels: levelData.map(l => l.name),
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+    if (data.attribute_description) {
+      card.querySelector('.attr-description').value = data.attribute_description;
+    }
+    const levelRows = card.querySelectorAll('.level-row');
+    (data.levels || []).forEach((lv, i) => {
+      if (i >= levelData.length) return;
+      const row = levelRows[levelData[i].idx];
+      if (lv.description !== undefined)
+        row.querySelector('.level-description').value = lv.description;
+      if (lv.llm_hint !== undefined)
+        row.querySelector('.level-llm-hint').value = lv.llm_hint;
+    });
+  } catch (err) {
+    alert(`AI generation failed: ${err.message}`);
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+
+// ── Sample size ───────────────────────────────────────────────────────────
+function updateSampleSize() {
+  const tasks = parseInt(document.getElementById('num_tasks').value) || 8;
+  const alts  = parseInt(document.getElementById('num_alternatives').value) || 2;
+  let maxL = 0;
+  document.querySelectorAll('.attribute-card').forEach(c => {
+    const n = c.querySelectorAll('.level-row').length;
+    if (n > maxL) maxL = n;
+  });
+  if (!maxL) maxL = 2;
+
+  fetch(`/api/sample-size?tasks=${tasks}&alts=${alts}&max_levels=${maxL}`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('sample-min').textContent = d.minimum;
+      document.getElementById('sample-recommended').textContent = d.recommended;
+    });
+  const selectedType = document.querySelector('input[name=pres_type_radio]:checked')?.value;
+  if (selectedType === 'visual') updateImageCountInfo();
+  if (document.getElementById('use_blocked')?.checked) updatePoolSizeSuggestion();
+  checkLevelBalance();
+}
+
+// ── AI suggestion ─────────────────────────────────────────────────────────
+async function suggestWithAI() {
+  const title = document.getElementById('title').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const errBox = document.getElementById('ai-error');
+  const btn = document.getElementById('ai-suggest-btn');
+
+  errBox.classList.add('d-none');
+
+  if (!title) {
+    errBox.textContent = 'Please fill in the survey title on page 1 first.';
+    errBox.classList.remove('d-none');
+    return;
+  }
+
+  // Do not overwrite an existing setup
+  const hasExisting = [...document.querySelectorAll('.attr-name')]
+    .some(el => el.value.trim() !== '');
+  if (hasExisting) {
+    errBox.textContent = 'Attributes are already configured. Remove them manually before using AI suggestion.';
+    errBox.classList.remove('d-none');
+    return;
+  }
+
+  // Read current attribute/level counts to match the user's configured design shape
+  const existingCards = [...document.querySelectorAll('.attribute-card')];
+  const num_attributes = existingCards.length || 4;
+  const levelCounts = existingCards.map(c => c.querySelectorAll('.level-row').length);
+  const num_levels = levelCounts.length ? Math.max(...levelCounts) : 2;
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+  btn.querySelector('.loading-text').classList.remove('d-none');
+
+  try {
+    const resp = await fetch('/api/suggest-design', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, description, num_attributes, num_levels }),
+    });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.error || `HTTP ${resp.status}`);
+    }
+
+    if (!data.attributes || !data.attributes.length) {
+      throw new Error('AI returned an empty suggestion.');
+    }
+
+    // Replace current attributes with AI suggestion, trimming levels to per-attribute counts
+    const container = document.getElementById('attributes-container');
+    container.innerHTML = '';
+    data.attributes.forEach((a, i) => {
+      const targetCount = levelCounts[i] || num_levels;
+      a.levels = (a.levels || []).slice(0, targetCount);
+      addAttribute(a);
+    });
+
+    // Generate LLM hints for every new attribute card (reuse per-attribute function)
+    container.querySelectorAll('.attribute-card').forEach(card => {
+      const aiBtn = card.querySelector('.attr-ai-btn');
+      if (aiBtn) generateAttrDetails(aiBtn);
+    });
+
+  } catch (err) {
+    errBox.textContent = `AI suggestion failed: ${err.message}`;
+    errBox.classList.remove('d-none');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    btn.querySelector('.loading-text').classList.add('d-none');
+  }
+}
+
+// ── Presentation type config cards ───────────────────────────────────────
+document.querySelectorAll('input[name=pres_type_radio]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const selected = document.querySelector('input[name=pres_type_radio]:checked')?.value;
+    document.getElementById('tabular-config-card').classList.toggle('d-none', selected !== 'tabular');
+    document.getElementById('textual-config-card').classList.toggle('d-none', selected !== 'textual');
+    document.getElementById('visual-config-card').classList.toggle('d-none', selected !== 'visual');
+    if (selected === 'textual') updateTextPromptPreview();
+    if (selected === 'visual') { updateImagePromptPreview(); updateImageCountInfo(); }
+  });
+});
+
+async function generateTextPrompt() {
+  const btn = document.getElementById('gen-text-prompt-btn');
+  const resultBox = document.getElementById('text-prompt-result');
+  btn.querySelector('.ai-icon').classList.add('d-none');
+  btn.querySelector('.spinner').classList.remove('d-none');
+  btn.querySelector('.loading-text').classList.remove('d-none');
+  btn.disabled = true;
+  resultBox.className = 'alert mt-2 d-none py-2 small';
+
+  const attributes = [];
+  document.querySelectorAll('.attribute-card').forEach(card => {
+    const name = card.querySelector('.attr-name').value.trim();
+    if (!name) return;
+    const levels = [];
+    card.querySelectorAll('.level-row').forEach(row => {
+      const ln   = row.querySelector('.level-name').value.trim();
+      const hint = row.querySelector('.level-llm-hint')?.value.trim() || '';
+      if (ln) levels.push({ name: ln, llm_hint: hint });
+    });
+    attributes.push({ name, levels });
+  });
+
+  try {
+    const resp = await fetch('/api/generate-text-prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attributes,
+        language: document.getElementById('language').value.trim() || 'English',
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim(),
+      }),
+    });
+    const json = await resp.json();
+    if (json.error) throw new Error(json.error);
+    document.getElementById('text_prompt').value = json.prompt;
+    updateTextPromptPreview();
+    resultBox.textContent = 'Prompt generated. Review it and adjust as needed before generating texts.';
+    resultBox.className = 'alert alert-success mt-2 py-2 small';
+  } catch (err) {
+    resultBox.textContent = 'Error: ' + err.message;
+    resultBox.className = 'alert alert-danger mt-2 py-2 small';
+  } finally {
+    btn.querySelector('.ai-icon').classList.remove('d-none');
+    btn.querySelector('.spinner').classList.add('d-none');
+    btn.querySelector('.loading-text').classList.add('d-none');
+    btn.disabled = false;
+  }
+}
+
+function resetTextPrompt() {
+  const language = document.getElementById('language').value.trim() || 'English';
+  document.getElementById('text_prompt').value = buildDefaultTextPrompt(language);
+  updateTextPromptPreview();
+}
+
+function updateTextPromptPreview() {
+  const el = document.getElementById('text-prompt-preview');
+  if (!el) return;
+  const cards = document.querySelectorAll('.attribute-card');
+  if (!cards.length) {
+    el.textContent = '(Add attributes on page 2 to see an example.)';
+    return;
+  }
+  const lines = ['Profile:'];
+  cards.forEach(card => {
+    const name = card.querySelector('.attr-name').value.trim() || '(unnamed)';
+    const levelRows = card.querySelectorAll('.level-row');
+    if (!levelRows.length) return;
+    const pick = levelRows[Math.floor(Math.random() * levelRows.length)];
+    const level = pick.querySelector('.level-name').value.trim() || '(unnamed)';
+    const hint  = pick.querySelector('.level-llm-hint').value.trim();
+    lines.push(hint ? `- ${name}: ${level} (${hint})` : `- ${name}: ${level}`);
+  });
+  el.textContent = lines.join('\n');
+}
+
+// Populate preview on load if textual is already selected (edit mode)
+if (document.querySelector('input[name=pres_type_radio][value="textual"]')?.checked) {
+  updateTextPromptPreview();
+}
+
+function buildDefaultTextPrompt(language) {
+  const attrLines = [];
+  document.querySelectorAll('.attribute-card').forEach(card => {
+    const name = card.querySelector('.attr-name').value.trim();
+    if (!name) return;
+    const levels = [];
+    card.querySelectorAll('.level-row').forEach(row => {
+      const ln = row.querySelector('.level-name').value.trim();
+      if (ln) levels.push(ln);
+    });
+    attrLines.push(`  - ${name}: ${levels.join(' / ')}`);
+  });
+
+  const attrSection = attrLines.length
+    ? `\nThe design includes the following attributes:\n${attrLines.join('\n')}\n`
+    : '';
+
+  return `Write a brief, engaging description (3–5 sentences) for the following option in a survey study. Write in ${language}.
+${attrSection}
+Embed the option's characteristics naturally in a coherent narrative — do not list them as bullet points or repeat the attribute names verbatim. The goal is a realistic description a survey participant would read and evaluate. Keep the tone neutral and informative.
+
+The specific attribute values for this option are:`;
+}
+
+// ── Visual presentation config ────────────────────────────────────────────
+function updateImagePromptPreview() {
+  const el = document.getElementById('image-prompt-preview');
+  if (!el) return;
+  const cards = document.querySelectorAll('.attribute-card');
+  if (!cards.length) { el.textContent = '(Add attributes on page 2 to see an example.)'; return; }
+  const lines = ['Profile:'];
+  cards.forEach(card => {
+    const name = card.querySelector('.attr-name').value.trim() || '(unnamed)';
+    const levelRows = card.querySelectorAll('.level-row');
+    if (!levelRows.length) return;
+    const pick = levelRows[Math.floor(Math.random() * levelRows.length)];
+    const level = pick.querySelector('.level-name').value.trim() || '(unnamed)';
+    const hint  = pick.querySelector('.level-llm-hint').value.trim();
+    lines.push(hint ? `- ${name}: ${level} (${hint})` : `- ${name}: ${level}`);
+  });
+  el.textContent = lines.join('\n');
+}
+
+function updateImageCountInfo() {
+  const tasks = parseInt(document.getElementById('num_tasks').value) || 8;
+  const alts  = parseInt(document.getElementById('num_alternatives').value) || 2;
+  const total = tasks * alts;
+  const box   = document.getElementById('img-count-info');
+  const text  = document.getElementById('img-count-text');
+  box.classList.remove('d-none', 'alert-light', 'alert-warning');
+  text.textContent = `${total} images will be generated (${tasks} tasks × ${alts} alternatives).`;
+  box.classList.add('alert-light');
+}
+
+async function optimizeImagePrompt() {
+  const btn      = document.getElementById('optimize-img-btn');
+  const ta       = document.getElementById('image_prompt');
+  const result   = document.getElementById('img-prompt-result');
+  const prompt   = ta.value.trim();
+  if (!prompt) {
+    result.textContent = 'Please enter a base prompt first.';
+    result.className = 'alert alert-warning mt-2 py-2 small';
+    return;
+  }
+  btn.classList.add('loading'); btn.disabled = true;
+  btn.querySelector('.loading-text').classList.remove('d-none');
+  result.classList.add('d-none');
+  try {
+    const resp = await fetch('/api/optimize-image-prompt', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    ta.value = data.prompt;
+  } catch (err) {
+    result.textContent = `Optimization failed: ${err.message}`;
+    result.className = 'alert alert-warning mt-2 py-2 small';
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+    btn.querySelector('.loading-text').classList.add('d-none');
+  }
+}
+
+async function imageFeedback() {
+  const btn    = document.getElementById('feedback-img-btn');
+  const ta     = document.getElementById('image_prompt');
+  const result = document.getElementById('img-prompt-result');
+  const prompt = ta.value.trim();
+  if (!prompt) {
+    result.textContent = 'Please enter a base prompt first.';
+    result.className = 'alert alert-warning mt-2 py-2 small';
+    return;
+  }
+  const cards = document.querySelectorAll('.attribute-card');
+  const parts = [];
+  cards.forEach(card => {
+    const name = card.querySelector('.attr-name').value.trim();
+    const levelRows = card.querySelectorAll('.level-row');
+    if (!name || !levelRows.length) return;
+    const pick  = levelRows[Math.floor(Math.random() * levelRows.length)];
+    const level = pick.querySelector('.level-name').value.trim();
+    const hint  = pick.querySelector('.level-llm-hint').value.trim();
+    parts.push(hint ? `${name}: ${level} (${hint})` : `${name}: ${level}`);
+  });
+  btn.classList.add('loading'); btn.disabled = true;
+  btn.querySelector('.loading-text').classList.remove('d-none');
+  result.classList.add('d-none');
+  try {
+    const resp = await fetch('/api/image-prompt-feedback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt, profile: parts.join(', ') }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    result.textContent = data.feedback;
+    result.className = 'alert alert-info mt-2 py-2 small';
+  } catch (err) {
+    result.textContent = `Feedback failed: ${err.message}`;
+    result.className = 'alert alert-warning mt-2 py-2 small';
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+    btn.querySelector('.loading-text').classList.add('d-none');
+  }
+}
+
+// Populate on load if visual is selected (edit mode)
+if (document.querySelector('input[name=pres_type_radio][value="visual"]')?.checked) {
+  updateImagePromptPreview();
+  updateImageCountInfo();
+}
+
+// ── Blocked design ────────────────────────────────────────────────────────
+function toggleBlockedDesign() {
+  const checked = document.getElementById('use_blocked').checked;
+  document.getElementById('blocked-config').classList.toggle('d-none', !checked);
+  if (checked) updatePoolSizeSuggestion();
+}
+
+function updatePoolSizeSuggestion() {
+  const numTasks = parseInt(document.getElementById('num_tasks').value) || 8;
+  let factorial = 1;
+  document.querySelectorAll('.attribute-card').forEach(card => {
+    factorial *= card.querySelectorAll('.level-row').length;
+  });
+  const suggestedPool = Math.min(Math.max(factorial, numTasks * 2), 256);
+  const suggestedBlocks = Math.max(2, Math.round(suggestedPool / numTasks));
+
+  document.getElementById('suggested-num-blocks').textContent = suggestedBlocks;
+  document.getElementById('suggested-pool-size-label').textContent = suggestedBlocks * numTasks;
+  const lbl1 = document.getElementById('blocked-tasks-label');
+  if (lbl1) lbl1.textContent = numTasks;
+  const lbl2 = document.getElementById('blocked-tasks-label2');
+  if (lbl2) lbl2.textContent = numTasks;
+
+  const blocksInput = document.getElementById('num_blocks');
+  if (!blocksInput.value) blocksInput.value = suggestedBlocks;
+  validateNumBlocks();
+}
+
+function validateNumBlocks() {
+  const blocks = parseInt(document.getElementById('num_blocks').value) || 0;
+  const warn = document.getElementById('pool-size-warning');
+  warn.classList.toggle('d-none', blocks >= 2 || blocks === 0);
+}
+
+// ── Form submission ───────────────────────────────────────────────────────
+function submitSurveyForm() {
+  if (!validatePage(1) || !validatePage(2)) {
+    showPage(!validatePage(1) ? 1 : 2);
+    return;
+  }
+
+  const attributes = [];
+  document.querySelectorAll('.attribute-card').forEach(card => {
+    const levels = [];
+    card.querySelectorAll('.level-row').forEach(row => {
+      levels.push({
+        name: row.querySelector('.level-name').value.trim(),
+        description: row.querySelector('.level-description').value.trim(),
+        llm_hint: row.querySelector('.level-llm-hint').value.trim(),
+      });
+    });
+    attributes.push({
+      name: card.querySelector('.attr-name').value.trim(),
+      description: card.querySelector('.attr-description').value.trim(),
+      levels,
+    });
+  });
+
+  const useBlocked = document.getElementById('use_blocked').checked;
+  const numBlocksVal = useBlocked ? parseInt(document.getElementById('num_blocks').value) : null;
+
+  const data = {
+    title: document.getElementById('title').value.trim(),
+    language: document.getElementById('language').value.trim() || 'English',
+    description: document.getElementById('description').value.trim(),
+    presentation_type: document.querySelector('input[name=pres_type_radio]:checked')?.value || 'tabular',
+    num_tasks: parseInt(document.getElementById('num_tasks').value),
+    num_alternatives: parseInt(document.getElementById('num_alternatives').value),
+    num_blocks: numBlocksVal || null,
+    auto_advance: document.getElementById('auto_advance').checked,
+    attr_order_mode: document.querySelector('input[name=attr_order_radio]:checked')?.value || 'none',
+    show_intro: document.getElementById('show_intro').checked,
+    intro_text: document.getElementById('intro_text').value.trim(),
+    text_prompt: document.getElementById('text_prompt').value.trim(),
+    image_prompt: document.getElementById('image_prompt').value.trim(),
+    image_model: document.querySelector('input[name=image_model_radio]:checked')?.value || 'gpt-image-2',
+    image_quality: document.querySelector('input[name=image_quality_radio]:checked')?.value || 'medium',
+    attributes,
+  };
+
+  document.getElementById('form-data').value = JSON.stringify(data);
+  document.getElementById('survey-form').submit();
+}
+
+// ── Intro: toggle section visibility ─────────────────────────────────────
+function toggleIntroSection() {
+  const show = document.getElementById('show_intro').checked;
+  document.getElementById('intro-section').style.display = show ? '' : 'none';
+  const headerBtns = document.getElementById('intro-reset-btn');
+  if (headerBtns) headerBtns.style.display = show ? '' : 'none';
+  const aiBtn = document.getElementById('intro-ai-btn');
+  if (aiBtn) aiBtn.style.display = show ? '' : 'none';
+}
+
+// ── Intro: build default LLM prompt from current form state ───────────────
+function buildDefaultPrompt() {
+  const title    = document.getElementById('title').value.trim() || '(untitled)';
+  const desc     = document.getElementById('description').value.trim();
+  const language = document.getElementById('language').value.trim() || 'English';
+  const numTasks = document.getElementById('num_tasks').value || '8';
+  const numAlts  = document.getElementById('num_alternatives').value || '2';
+
+  const attrLines = [];
+  document.querySelectorAll('.attribute-card').forEach(card => {
+    const name = card.querySelector('.attr-name').value.trim();
+    if (!name) return;
+    const attrDesc = card.querySelector('.attr-description').value.trim();
+    const levels = [];
+    card.querySelectorAll('.level-row').forEach(row => {
+      const ln = row.querySelector('.level-name').value.trim();
+      const ld = row.querySelector('.level-description').value.trim();
+      if (ln) levels.push(ld ? `${ln} (${ld})` : ln);
+    });
+    const levelStr = levels.join(' / ');
+    attrLines.push(attrDesc
+      ? `  - ${name} — ${attrDesc}: ${levelStr}`
+      : `  - ${name}: ${levelStr}`);
+  });
+
+  return `Write a brief introduction for participants in a survey study. The text will be shown directly on screen before the first question. Write in ${language}. Use plain, friendly language — avoid all academic or statistical jargon (do not use words like "conjoint", "utility", "attribute", "level", "stimuli", "factorial", or "orthogonal"). Aim for 150–220 words.
+
+Study context:
+  Title: ${title}${desc ? '\n  Description: ' + desc : ''}
+
+What participants will do:
+  They will see ${numTasks} choice scenarios. In each scenario, ${numAlts === '2' ? 'two options are' : numAlts + ' options are'} shown side by side. They pick the one they prefer most. There is no right or wrong answer; we are interested in their personal preferences.
+
+The options differ along these dimensions:
+${attrLines.join('\n') || '  (attributes not yet defined — fill in page 2 first)'}
+
+Instructions for writing the introduction:
+  1. Open with one sentence explaining the research topic in everyday terms.
+  2. Tell participants what they will see and what they need to do (choose their favourite option, ${numTasks} times).
+  3. Briefly describe each of the dimensions above so participants know what to look for.
+  4. Close with an encouraging sentence (e.g. "There are no right or wrong answers — we are interested in your personal opinion.").
+
+Output only the introduction text, ready to paste directly into the survey. No headings, no bullet points, no markdown.`;
+}
+
+function _populateIntroIfEmpty() {
+  const ta = document.getElementById('intro_text');
+  // In edit mode: already has saved value — don't overwrite.
+  // In create mode: populate with the prompt template on first visit.
+  if (!ta.value.trim()) {
+    ta.value = buildDefaultPrompt();
+  }
+}
+
+function resetIntroPrompt() {
+  if (document.getElementById('intro_text').value.trim() &&
+      !confirm('Replace the current text with the default prompt template?')) return;
+  document.getElementById('intro_text').value = buildDefaultPrompt();
+}
+
+// ── Intro: call OpenAI with current textarea content ─────────────────────
+async function generateIntro() {
+  const ta     = document.getElementById('intro_text');
+  const errBox = document.getElementById('intro-error');
+  const btn    = document.getElementById('intro-ai-btn');
+
+  errBox.classList.add('d-none');
+
+  const prompt = ta.value.trim();
+  if (!prompt) {
+    errBox.textContent = 'The textarea is empty. Click "Reset to prompt template" first.';
+    errBox.classList.remove('d-none');
+    return;
+  }
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+  btn.querySelector('.loading-text').classList.remove('d-none');
+
+  try {
+    const resp = await fetch('/api/generate-intro', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    ta.value = data.text;
+  } catch (err) {
+    errBox.textContent = `Generation failed: ${err.message}`;
+    errBox.classList.remove('d-none');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    btn.querySelector('.loading-text').classList.add('d-none');
+  }
+}
+</script>
+{% endblock %}

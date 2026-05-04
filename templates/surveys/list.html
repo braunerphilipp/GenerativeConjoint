@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}My Surveys{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">My Surveys</h1>
+  <a href="{{ url_for('surveys_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>New Survey
+  </a>
+</div>
+
+{% if active %}
+<div class="mb-5">
+  <h2 class="h5 text-muted mb-3">Active</h2>
+  <div class="row g-3">
+    {% for survey in active %}
+    {% set membership = survey.memberships | selectattr('user_id', 'eq', g.current_user.id) | first %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h5 class="card-title mb-0">
+              <a href="{{ url_for('surveys_detail', survey_id=survey.id) }}"
+                 class="text-decoration-none">{{ survey.title }}</a>
+            </h5>
+            <span class="badge bg-{{ 'primary' if membership and membership.role == 'owner' else 'secondary' }} ms-2">
+              {{ membership.role if membership else '' }}
+            </span>
+          </div>
+          {% if survey.description %}
+          <p class="card-text text-muted small">{{ survey.description | truncate(120) }}</p>
+          {% endif %}
+          <div class="small text-muted mt-2">
+            <i class="bi bi-calendar3 me-1"></i>{{ survey.created_at.strftime('%Y-%m-%d') }}
+            &nbsp;·&nbsp;
+            <i class="bi bi-grid me-1"></i>{{ survey.num_tasks }} tasks
+            &nbsp;·&nbsp;
+            <i class="bi bi-people me-1"></i>{{ survey.participants.count() }} participants
+          </div>
+        </div>
+        <div class="card-footer bg-transparent d-flex gap-2">
+          <a href="{{ url_for('surveys_detail', survey_id=survey.id) }}"
+             class="btn btn-sm btn-outline-secondary">Manage</a>
+          <form method="POST" action="{{ url_for('surveys_archive', survey_id=survey.id) }}"
+                class="ms-auto">
+            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                    onclick="return confirm('Archive this survey?')">Archive</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox display-4 d-block mb-3"></i>
+  <p>No surveys yet. <a href="{{ url_for('surveys_new') }}">Create your first survey.</a></p>
+</div>
+{% endif %}
+
+{% if archived %}
+<div>
+  <h2 class="h5 text-muted mb-3">Archived</h2>
+  <div class="list-group">
+    {% for survey in archived %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ survey.title }}</strong>
+        <span class="text-muted small ms-2">{{ survey.created_at.strftime('%Y-%m-%d') }}</span>
+      </div>
+      <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('surveys_restore', survey_id=survey.id) }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Restore</button>
+        </form>
+        <button type="button" class="btn btn-sm btn-danger"
+                data-bs-toggle="modal" data-bs-target="#deleteModal"
+                data-survey-id="{{ survey.id }}"
+                data-survey-title="{{ survey.title }}"
+                data-delete-url="{{ url_for('surveys_delete', survey_id=survey.id) }}">
+          <i class="bi bi-trash3"></i> Delete
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Delete confirmation modal (shared by all archived surveys) -->
+<div class="modal fade" id="deleteModal" tabindex="-1"
+     aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">
+          <i class="bi bi-exclamation-triangle text-danger me-2"></i>Permanently Delete Survey
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>This will permanently delete the survey, all responses, all generated stimuli,
+           and all participant data. <strong>This cannot be undone.</strong></p>
+        <p class="mb-1">To confirm, type the survey name:</p>
+        <p class="fw-semibold font-monospace mb-2" id="delete-modal-title"></p>
+        <input type="text" id="delete-confirm-input" class="form-control"
+               placeholder="Survey name" autocomplete="off">
+        <div class="invalid-feedback" id="delete-name-mismatch">
+          Name does not match. Please try again.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="POST" id="delete-survey-form" action="">
+          <button type="submit" class="btn btn-danger" id="delete-confirm-btn" disabled>
+            <i class="bi bi-trash3 me-1"></i>Delete Permanently
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const deleteModal = document.getElementById('deleteModal');
+const deleteInput = document.getElementById('delete-confirm-input');
+const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+const deleteForm = document.getElementById('delete-survey-form');
+let expectedTitle = '';
+
+deleteModal.addEventListener('show.bs.modal', event => {
+  const btn = event.relatedTarget;
+  expectedTitle = btn.dataset.surveyTitle;
+  deleteForm.action = btn.dataset.deleteUrl;
+  document.getElementById('delete-modal-title').textContent = expectedTitle;
+  deleteInput.value = '';
+  deleteInput.className = 'form-control';
+  deleteConfirmBtn.disabled = true;
+});
+
+deleteInput.addEventListener('input', () => {
+  const match = deleteInput.value === expectedTitle;
+  deleteConfirmBtn.disabled = !match;
+  deleteInput.classList.toggle('is-invalid', deleteInput.value.length > 0 && !match);
+  deleteInput.classList.toggle('is-valid', match);
+});
+
+deleteModal.addEventListener('hidden.bs.modal', () => {
+  deleteInput.value = '';
+  deleteInput.className = 'form-control';
+  deleteConfirmBtn.disabled = true;
+});
+</script>
+{% endblock %}

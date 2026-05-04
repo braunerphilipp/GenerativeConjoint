@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% block title %}Inspect Design — {{ survey.title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_list') }}">Surveys</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_detail', survey_id=survey.id) }}">{{ survey.title }}</a></li>
+    <li class="breadcrumb-item active">Inspect Design</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Inspect Design — {{ survey.title }}</h1>
+  {% if is_owner %}
+  <form method="POST" action="{{ url_for('surveys_regenerate', survey_id=survey.id) }}">
+    <button type="submit" class="btn btn-sm btn-outline-secondary"
+            onclick="return confirm('Regenerate the design? Existing participant data will not be affected, but new participants will see the new design.')">
+      <i class="bi bi-arrow-clockwise me-1"></i>Regenerate Design
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<ul class="nav nav-tabs mb-4" id="inspect-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="blocks-tab" data-bs-toggle="tab"
+            data-bs-target="#blocks-pane" type="button" role="tab">
+      <i class="bi bi-grid-3x3-gap me-1"></i>Blocks &amp; Profiles
+    </button>
+  </li>
+  {% if stimulus_type != 'tabular' %}
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="stimuli-tab" data-bs-toggle="tab"
+            data-bs-target="#stimuli-pane" type="button" role="tab">
+      <i class="bi bi-{% if stimulus_type == 'image' %}images{% else %}card-text{% endif %} me-1"></i>Stimuli
+    </button>
+  </li>
+  {% endif %}
+</ul>
+
+<div class="tab-content" id="inspect-tab-content">
+
+  <!-- ── Tab 1: Blocks & Profiles ── -->
+  <div class="tab-pane fade show active" id="blocks-pane" role="tabpanel">
+    {% if num_blocks == 1 %}
+    <p class="text-muted">This survey uses a single block (no blocked design). All {{ design_tasks }} tasks are shown to every participant.</p>
+    {% else %}
+    <p class="text-muted mb-3">
+      {{ num_blocks }} blocks &times; {{ survey.num_tasks }} tasks per block = {{ design_tasks }} total tasks.
+      Each participant is randomly assigned to one block; task order is shuffled within the block.
+    </p>
+    {% endif %}
+
+    {% for block in blocks %}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        {% if num_blocks == 1 %}
+        All Tasks
+        {% else %}
+        Block {{ block.block_index + 1 }}
+        <span class="text-muted fw-normal small ms-2">(Tasks {{ block.tasks[0].task_index + 1 }}–{{ block.tasks[-1].task_index + 1 }})</span>
+        {% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm mb-0" style="font-size:.82rem">
+          <thead class="table-light">
+            <tr>
+              <th class="text-muted" style="width:3rem">Task</th>
+              <th class="text-muted" style="width:3.5rem">Option</th>
+              {% for attr in attributes %}
+              <th>{{ attr.name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in block.tasks %}
+            {% for a_idx in range(survey.num_alternatives) %}
+            <tr class="{% if loop.first %}border-top-2{% endif %}">
+              {% if loop.first %}
+              <td class="align-middle text-center text-muted fw-semibold"
+                  rowspan="{{ survey.num_alternatives }}">
+                {{ task.task_index + 1 }}
+              </td>
+              {% endif %}
+              <td class="align-middle text-center text-muted">{{ a_idx + 1 }}</td>
+              {% set profile = task.alts[a_idx] %}
+              {% for attr in attributes %}
+              <td class="align-middle">
+                {% set lv = profile.get(attr.name) %}
+                {{ lv.name if lv else '—' }}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Tab 2: Stimuli ── -->
+  {% if stimulus_type != 'tabular' %}
+  <div class="tab-pane fade" id="stimuli-pane" role="tabpanel">
+
+    {% if is_owner %}
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      {% if stimulus_type == 'text' %}
+      <button type="button" class="btn btn-info" id="gen-btn"
+              onclick="generateStimuli()"
+              {% if not survey.design_generated or not survey.text_prompt %}disabled{% endif %}>
+        <i class="bi bi-stars me-1"></i>Generate Texts
+      </button>
+      {% if not survey.text_prompt %}
+      <span class="text-muted small">Add a text generation prompt in the survey settings first.</span>
+      {% endif %}
+      {% if survey.texts_generated %}
+      <form method="POST" action="{{ url_for('surveys_clear_texts', survey_id=survey.id) }}">
+        <button type="submit" class="btn btn-outline-secondary"
+                onclick="return confirm('Clear all generated texts? This cannot be undone.')">
+          <i class="bi bi-x-circle me-1"></i>Clear All Texts
+        </button>
+      </form>
+      {% endif %}
+      {% elif stimulus_type == 'image' %}
+      <button type="button" class="btn btn-info" id="gen-btn"
+              onclick="generateStimuli()"
+              {% if not survey.design_generated or not survey.image_prompt %}disabled{% endif %}>
+        <i class="bi bi-image me-1"></i>Generate Images
+      </button>
+      {% if not survey.image_prompt %}
+      <span class="text-muted small">Add an image generation prompt in the survey settings first.</span>
+      {% endif %}
+      {% if survey.images_generated %}
+      <form method="POST" action="{{ url_for('surveys_clear_images', survey_id=survey.id) }}">
+        <button type="submit" class="btn btn-outline-secondary"
+                onclick="return confirm('Clear all generated images? This cannot be undone.')">
+          <i class="bi bi-x-circle me-1"></i>Clear All Images
+        </button>
+      </form>
+      {% endif %}
+      {% endif %}
+    </div>
+    <div id="gen-progress" class="d-none mb-3">
+      <div class="progress mb-1" style="height:6px">
+        <div class="progress-bar" id="gen-progress-bar" style="width:0%" role="progressbar"></div>
+      </div>
+      <div class="text-center small text-muted" id="gen-progress-label">Generating… 0 / 0</div>
+    </div>
+    <div id="gen-error" class="alert alert-danger small py-2 d-none mb-3"></div>
+    {% endif %}
+
+    {% set unique_pks = stimuli | map(attribute='profile_key') | list | unique | list %}
+    {% set unique_total = unique_pks | length %}
+    {% set unique_generated = stimuli | selectattr('generated') | map(attribute='profile_key') | list | unique | list | length %}
+    {% set unique_missing = unique_total - unique_generated %}
+
+    <div class="mb-3 text-muted small">
+      <strong class="text-body">{{ unique_generated }}</strong> of <strong class="text-body">{{ unique_total }}</strong> unique profiles generated
+      {% if unique_missing > 0 %}
+      <span class="badge bg-danger ms-2">{{ unique_missing }} missing</span>
+      {% endif %}
+      {% if stimuli | selectattr('shared') | list | length > 0 %}
+      <span class="ms-2">· {{ stimuli | length }} total positions (some profiles shared across blocks)</span>
+      {% endif %}
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered" style="font-size:.82rem">
+        <thead class="table-light">
+          <tr>
+            <th style="width:3rem">Task</th>
+            <th style="width:3.5rem">Option</th>
+            {% for attr in attributes %}
+            <th>{{ attr.name }}</th>
+            {% endfor %}
+            <th>Status</th>
+            {% if stimulus_type == 'text' %}
+            <th>Generated Text</th>
+            {% elif stimulus_type == 'image' %}
+            <th style="width:100px">Image</th>
+            {% endif %}
+            {% if is_owner %}
+            <th style="width:4rem"></th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in stimuli %}
+          <tr class="{% if not s.generated %}table-danger{% endif %}">
+            <td class="align-middle text-center text-muted">{{ s.task + 1 }}</td>
+            <td class="align-middle text-center text-muted">{{ s.alt + 1 }}</td>
+            {% for attr in attributes %}
+            <td class="align-middle">{{ s.profile.get(attr.name, '—') }}</td>
+            {% endfor %}
+            <td class="align-middle">
+              {% if s.generated %}
+              <span class="badge bg-success">OK</span>
+              {% else %}
+              <span class="badge bg-danger">Missing</span>
+              {% endif %}
+              {% if s.shared %}
+              <span class="badge bg-secondary ms-1" title="Same profile appears in multiple positions — one stimulus is shared">shared</span>
+              {% endif %}
+            </td>
+            {% if stimulus_type == 'text' %}
+            <td class="align-middle" style="max-width:300px;white-space:normal;line-height:1.4">
+              {{ s.content or '' }}
+            </td>
+            {% elif stimulus_type == 'image' %}
+            <td class="align-middle text-center">
+              {% if s.generated %}
+              <img src="{{ url_for('serve_image', survey_id=survey.id, task_idx=s.task, alt_idx=s.alt, size='thumb') }}"
+                   class="img-thumbnail" style="width:80px;height:80px;object-fit:cover;cursor:pointer"
+                   onclick="showFullImage('{{ url_for('serve_image', survey_id=survey.id, task_idx=s.task, alt_idx=s.alt, size='full') }}', 'Task {{ s.task+1 }} Option {{ s.alt+1 }}')"
+                   alt="Task {{ s.task+1 }} Option {{ s.alt+1 }}">
+              {% endif %}
+            </td>
+            {% endif %}
+            {% if is_owner %}
+            <td class="align-middle text-center">
+              {% if s.generated and s.stimulus_id %}
+              {% if stimulus_type == 'text' %}
+              <form method="POST"
+                    action="{{ url_for('surveys_delete_text', survey_id=survey.id, text_id=s.stimulus_id) }}"
+                    onsubmit="return confirm('Delete this stimulus?{% if s.shared %} It is shared across multiple positions — all will become missing.{% endif %}')">
+              {% else %}
+              <form method="POST"
+                    action="{{ url_for('surveys_delete_image', survey_id=survey.id, image_id=s.stimulus_id) }}"
+                    onsubmit="return confirm('Delete this stimulus?{% if s.shared %} It is shared across multiple positions — all will become missing.{% endif %}')">
+              {% endif %}
+                <button type="submit" class="btn btn-sm btn-link text-danger p-0"
+                        title="Delete">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+              {% elif not s.generated %}
+              <button type="button" class="btn btn-sm btn-outline-info"
+                      onclick="generateSingle(this, {{ s.task }}, {{ s.alt }})"
+                      title="Generate this stimulus">
+                <i class="bi bi-stars"></i>
+              </button>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Image enlarge modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title" id="imageModalLabel"></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-2 text-center">
+        <img id="modal-image" src="" class="img-fluid" style="max-height:80vh" alt="">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.hash === '#stimuli') {
+    const tab = document.getElementById('stimuli-tab');
+    if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+  }
+});
+
+function showFullImage(url, label) {
+  document.getElementById('modal-image').src = url;
+  document.getElementById('imageModalLabel').textContent = label;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('imageModal')).show();
+}
+
+{% if is_owner and stimulus_type != 'tabular' %}
+async function generateSingle(btn, taskIdx, altIdx) {
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  const isText = {{ (stimulus_type == 'text') | tojson }};
+  const generateUrl = isText
+    ? '{{ url_for("surveys_generate_single_text",  survey_id=survey.id) }}'
+    : '{{ url_for("surveys_generate_single_image", survey_id=survey.id) }}';
+  const finalizeUrl = isText
+    ? '{{ url_for("surveys_finalize_texts",  survey_id=survey.id) }}'
+    : '{{ url_for("surveys_finalize_images", survey_id=survey.id) }}';
+  try {
+    const r = await fetch(generateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_index: taskIdx, alternative_index: altIdx }),
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error || `HTTP ${r.status}`); }
+    await fetch(finalizeUrl, { method: 'POST' });
+    window.location.reload();
+  } catch (err) {
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+    alert(`Generation failed: ${err.message}`);
+  }
+}
+
+async function generateStimuli() {
+  const btn       = document.getElementById('gen-btn');
+  const progressEl = document.getElementById('gen-progress');
+  const bar       = document.getElementById('gen-progress-bar');
+  const label     = document.getElementById('gen-progress-label');
+  const errEl     = document.getElementById('gen-error');
+  const isText    = {{ (stimulus_type == 'text') | tojson }};
+  const kind      = isText ? 'text' : 'image';
+
+  const startUrl    = isText
+    ? '{{ url_for("surveys_start_text_generation",   survey_id=survey.id) }}'
+    : '{{ url_for("surveys_start_image_generation",  survey_id=survey.id) }}';
+  const generateUrl = isText
+    ? '{{ url_for("surveys_generate_single_text",    survey_id=survey.id) }}'
+    : '{{ url_for("surveys_generate_single_image",   survey_id=survey.id) }}';
+  const finalizeUrl = isText
+    ? '{{ url_for("surveys_finalize_texts",          survey_id=survey.id) }}'
+    : '{{ url_for("surveys_finalize_images",         survey_id=survey.id) }}';
+
+  btn.disabled = true;
+  progressEl.classList.remove('d-none');
+  errEl.classList.add('d-none');
+  bar.style.width = '0%';
+  label.textContent = 'Starting…';
+
+  try {
+    const planResp = await fetch(startUrl, { method: 'POST' });
+    if (!planResp.ok) {
+      const e = await planResp.json();
+      throw new Error(e.error || `HTTP ${planResp.status}`);
+    }
+    const { profiles, total } = await planResp.json();
+
+    if (total === 0) {
+      label.textContent = 'All profiles already generated.';
+      setTimeout(() => window.location.reload(), 800);
+      return;
+    }
+
+    let done = 0;
+    const errors = [];
+    for (const profile of profiles) {
+      label.textContent = `Generating… ${done} / ${total}`;
+      bar.style.width = `${Math.round(100 * done / total)}%`;
+      const r = await fetch(generateUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+      done++;
+      if (!r.ok) {
+        const e = await r.json();
+        errors.push(`Task ${profile.task_index + 1}, Option ${profile.alternative_index + 1}: ${e.error}`);
+      }
+      label.textContent = `Generating… ${done} / ${total}`;
+      bar.style.width = `${Math.round(100 * done / total)}%`;
+    }
+
+    if (errors.length) {
+      throw new Error(`${errors.length} ${kind}(s) failed:\n${errors.join('\n')}`);
+    }
+
+    await fetch(finalizeUrl, { method: 'POST' });
+    window.location.reload();
+
+  } catch (err) {
+    progressEl.classList.add('d-none');
+    btn.disabled = false;
+    errEl.textContent = `Generation failed: ${err.message}`;
+    errEl.classList.remove('d-none');
+  }
+}
+{% endif %}
+</script>
+{% endblock %}

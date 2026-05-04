@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Design Details — {{ survey.title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_list') }}">Surveys</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('surveys_detail', survey_id=survey.id) }}">{{ survey.title }}</a></li>
+    <li class="breadcrumb-item active">Design Details</li>
+  </ol>
+</nav>
+
+<h1 class="h3 mb-4">Design Details</h1>
+
+<!-- Visual tree -->
+<h2 class="h5 mb-3">Attributes &amp; Levels</h2>
+
+{% for attr in attributes %}
+<div class="mb-4">
+  <div class="fw-semibold">
+    {{ loop.index }}. {{ attr.name }}
+  </div>
+  {% if attr.description %}
+  <div class="small ms-3 mt-1">
+    <span class="badge bg-light text-secondary border me-1" style="font-size:.7rem">Participant description:</span>{{ attr.description }}
+  </div>
+  {% endif %}
+
+  <div class="ms-3 mt-2">
+    {% for lv in attr.levels %}
+    <div class="mb-2 border-start border-2 ps-3 py-1"
+         style="border-color:#dee2e6 !important">
+      <div class="fw-medium">{{ loop.index }}. {{ lv.name }}</div>
+      {% if lv.description %}
+      <div class="small">
+        <span class="badge bg-light text-secondary border me-1" style="font-size:.7rem">Participant description:</span>{{ lv.description }}
+      </div>
+      {% endif %}
+      {% if lv.llm_hint %}
+      <div class="small">
+        <span class="badge bg-light text-secondary border me-1" style="font-size:.7rem">LLM hint:</span>{{ lv.llm_hint }}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="mt-4">
+  <a href="{{ url_for('surveys_design_yaml', survey_id=survey.id) }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-download me-1"></i>Download YAML
+  </a>
+</div>
+
+{% endblock %}

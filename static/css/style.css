@@ -1,0 +1,26 @@
+/* Conjoint Survey Tool — global styles */
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Monospace for ORCID iDs and URLs */
+.font-monospace { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+
+/* Drag handles */
+.drag-handle, .drag-handle-level {
+  cursor: grab;
+  opacity: .5;
+  transition: opacity .15s;
+}
+.drag-handle:hover, .drag-handle-level:hover { opacity: 1; }
+
+/* Attribute cards during sort */
+.sortable-ghost { opacity: .4; }
+.sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+
+/* Participant task table — highlight on hover */
+.table-conjoint td { vertical-align: middle; }
+
+/* Subtle card shadow */
+.card { box-shadow: 0 1px 4px rgba(0,0,0,.06); }
