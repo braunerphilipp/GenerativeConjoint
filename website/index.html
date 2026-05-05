@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenerativeConjoint — Open-Source Conjoint Studies with AI-Generated Stimuli</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Hero                                                                   -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<header>
+  <div class="container">
+    <span class="eyebrow">Open-Source Research Software</span>
+    <h1>GenerativeConjoint</h1>
+    <p class="lead">
+      Run preference studies with tabular, AI-written scenario, or AI-generated image stimuli ---
+      without commercial licences, per-response fees, or programming experience.
+    </p>
+    <a href="https://github.com/[REPO]" class="btn btn-primary">View on GitHub</a>
+    <a href="#get-started" class="btn btn-outline">Get Started</a>
+  </div>
+</header>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- What is conjoint?                                                      -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <h2>What is conjoint analysis?</h2>
+    <p>
+      Conjoint analysis is a quantitative method for measuring how people make trade-offs.
+      Participants are shown pairs (or small sets) of alternatives that differ systematically
+      across several attributes&mdash;for example, price, quality, and brand&mdash;and asked to choose the one they prefer.
+      By repeating this across many tasks, the method recovers the weight each person places
+      on each attribute level, even when they cannot articulate those weights directly.
+    </p>
+    <p>
+      The method is widely used in
+      <a href="https://doi.org/10.1177/08997640251348654" target="_blank">political science</a>,
+      <a href="https://doi.org/10.3389/fpubh.2019.00134" target="_blank">health research</a>, and
+      <a href="https://doi.org/10.1016/j.enpol.2020.111586" target="_blank">environmental policy</a>,
+      and is gaining traction in human-computer interaction for studying preferences around
+      <a href="https://doi.org/10.1080/10447318.2024.2430494" target="_blank">privacy and data use in smart systems</a>
+      or <a href="https://doi.org/10.3390/s18093152" target="_blank">consumer technology features</a>.
+    </p>
+    <p>
+      This tool simplifies setup and administration, allowing participants to evaluate alternatives embedded in AI-generated textual or visual scenarios, more closely reflecting actual decision-making.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Core features                                                          -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section style="background:var(--gray-50)">
+  <div class="container">
+    <h2>What the platform does</h2>
+    <p>
+      The platform covers the full research lifecycle—from designing your study and
+      generating stimuli, to collecting responses and exporting analysis-ready data ---
+      through a browser-based interface that requires no programming.
+    </p>
+
+    <div class="features">
+
+      <div class="feature-card">
+        <span class="feature-icon">🎛️</span>
+        <h3>Guided study setup</h3>
+        <p>
+          A step-by-step wizard walks you through survey title, attributes and levels,
+          presentation mode, and participant introduction.
+          AI-assisted attribute suggestions can accelerate brainstorming, though final
+          design decisions remain yours to make.
+          The conjoint design is generated on demand from the survey page, where a
+          warning highlights when regeneration is needed after configuration changes.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📐</span>
+        <h3>Statistically sound designs</h3>
+        <p>
+          The platform generates D-efficient conjoint designs using a coordinate exchange
+          algorithm with multiple random restarts.
+          Blocked designs are supported for large profiles, and a built-in sample size
+          estimator provides real-time guidance.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🤖</span>
+        <h3>AI-generated stimuli</h3>
+        <p>
+          Beyond standard tables, the platform can generate a short scenario text or a
+          synthetic image for every profile in your design, using your prompt as a
+          template and appending the attribute-level details automatically.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔗</span>
+        <h3>External survey integration</h3>
+        <p>
+          Participants arrive via a redirect from your existing survey platform
+          (Qualtrics, SoSci Survey, LimeSurvey, etc.) carrying a unique participant key.
+          After completing the conjoint tasks they are redirected back, closing the loop.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📦</span>
+        <h3>Research-data-management export</h3>
+        <p>
+          A single ZIP archive contains long-format response data with a data dictionary,
+          the full design matrix, generated stimuli with their prompts, a
+          <code>design.yaml</code> study-configuration record, and an R starter script
+          ready for conditional logit estimation.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <h3>Live results view</h3>
+        <p>
+          A results page shows preliminary part-worth utilities and relative attribute
+          importance as data accumulate.
+          A shareable, token-authenticated link lets collaborators or project stakeholders
+          view results without accessing the full survey configuration.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔓</span>
+        <h3>Free and self-hosted</h3>
+        <p>
+          No subscription, no per-response fees.
+          You host the application on your own infrastructure; participant data never
+          leaves your server.
+          The only optional external service is an OpenAI API key for AI-generated stimuli.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">👥</span>
+        <h3>Collaboration and access control</h3>
+        <p>
+          Researchers log in via their ORCID iD.
+          Surveys can be shared between ORCID accounts with owner or collaborator roles,
+          making the platform suitable for multi-researcher projects.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Stimuli modes                                                          -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <h2>Three stimuli presentation modes</h2>
+    <p>
+      All three modes share the same underlying conjoint design and response collection logic.
+      The choice of mode affects how each alternative is presented to participants.
+    </p>
+    <div class="modes">
+
+      <div class="mode-card">
+        <div class="mode-card-header tabular">📋 Tabular</div>
+        <div class="mode-card-body">
+          <p>The standard conjoint format: a table with attribute rows and alternatives as columns.</p>
+          <ul>
+            <li>Maximum comparability</li>
+            <li>No API key required</li>
+            <li>Well-tested in the literature</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mode-card">
+        <div class="mode-card-header textual">📝 Textual (AI scenario)</div>
+        <div class="mode-card-body">
+          <p>Each alternative is shown as a short AI-written scenario that embeds the profile in natural language.</p>
+          <ul>
+            <li>Supports holistic evaluation</li>
+            <li>Useful for complex social or product scenarios</li>
+            <li>Requires an OpenAI API key</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mode-card">
+        <div class="mode-card-header visual">🖼️ Visual (AI image)</div>
+        <div class="mode-card-body">
+          <p>Each alternative is shown as an AI-generated image produced from the researcher's base prompt and profile details.</p>
+          <ul>
+            <li>High ecological validity for product or design research</li>
+            <li>Supports low / medium / high generation quality</li>
+            <li>Requires an OpenAI API key</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+    <p style="margin-top:1.25rem; font-size:.88rem; color:var(--gray-500)">
+      <strong>Note on AI stimuli and research integrity.</strong>
+      AI-generated stimuli are produced from researcher-specified profiles and prompts.
+      The design structure—attributes, levels, and framing—remains entirely the
+      researcher's theoretical decision and must be grounded in prior literature.
+      Generated stimuli should be reviewed before field deployment; the platform
+      supports individual regeneration so that problematic outputs can be replaced without
+      rerunning the entire batch.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Screenshots                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section style="background:var(--gray-50)">
+  <div class="container">
+    <h2>Screenshots</h2>
+
+    <!-- Screenshot 1: full-width, wizard / creator view -->
+    <figure style="margin-bottom:2.5rem">
+      <div class="screenshot">
+        <img src="img/screenshot-wizard.png" alt="Survey creation wizard"
+             onerror="this.style.display='none'">
+        <div class="screenshot-placeholder">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+          </svg>
+          <span><strong>Image 1</strong><br>Survey creation wizard<br>(attribute &amp; level setup, step 2)</span>
+        </div>
+      </div>
+      <figcaption>
+        The survey creation wizard guides researchers through study configuration in four steps.
+        Here: defining attributes and levels, with AI-assisted suggestions and drag-and-drop reordering.
+      </figcaption>
+    </figure>
+
+    <!-- Screenshot 2 + 3: side by side, detail page + inspect design -->
+    <div class="split" style="margin-bottom:2.5rem">
+      <figure>
+        <div class="screenshot">
+          <img src="img/screenshot-detail.png" alt="Survey detail page"
+               onerror="this.style.display='none'">
+          <div class="screenshot-placeholder">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 17H5a2 2 0 0 0-2 2v2h18v-2a2 2 0 0 0-2-2h-4"/><circle cx="12" cy="11" r="4"/>
+            </svg>
+            <span><strong>Image 2</strong><br>Survey detail &amp; results overview<br>(creator view)</span>
+          </div>
+        </div>
+        <figcaption>
+          The survey detail page shows design parameters, a Generate Design button
+          (highlighted when regeneration is needed), participant progress,
+          preliminary part-worth utility estimates, and access to data export.
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="screenshot">
+          <img src="img/screenshot-inspect.png" alt="Inspect Design page"
+               onerror="this.style.display='none'">
+          <div class="screenshot-placeholder">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M3 9h18M3 15h18M9 9v12M15 9v12"/>
+            </svg>
+            <span><strong>Image 3</strong><br>Inspect Design—stimuli tab<br>(creator view)</span>
+          </div>
+        </div>
+        <figcaption>
+          The Inspect Design page shows the full design matrix by block and the stimuli generation
+          status for each profile, with per-stimulus regeneration to test prompts iteratively.
+        </figcaption>
+      </figure>
+    </div>
+
+    <!-- Screenshot 4: participant task view -->
+    <figure>
+      <div class="screenshot">
+        <img src="img/screenshot-task.png" alt="Participant task view"
+             onerror="this.style.display='none'">
+        <div class="screenshot-placeholder">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="4" width="9" height="16" rx="1.5"/>
+            <rect x="13" y="4" width="9" height="16" rx="1.5"/>
+          </svg>
+          <span><strong>Image 4</strong><br>Participant choice task<br>(tabular or textual/visual mode)</span>
+        </div>
+      </div>
+      <figcaption>
+        The participant task interface: a progress indicator, the choice alternatives
+        (here in tabular mode), and a selection control.
+        Textual and visual modes replace the table with scenario cards or image cards.
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Workflow                                                               -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <h2>How a study works</h2>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Configure your survey</h3>
+          <p>
+            Use the setup wizard to define your research context, attributes and levels,
+            presentation mode, and participant introduction text.
+            A warning on the survey page highlights whenever the conjoint design needs
+            to be (re-)generated after configuration changes.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Generate the design and stimuli</h3>
+          <p>
+            Click <em>Generate Design</em> on the survey page to produce a D-efficient
+            conjoint design.
+            For textual or visual surveys, write a base prompt and trigger AI generation
+            from the Inspect Design page—one stimulus at a time to test your prompt,
+            then the full batch.
+            Any individual result can be regenerated without rerunning the whole batch.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Embed in your existing survey</h3>
+          <p>
+            Copy the entry URL into your Qualtrics, SoSci Survey, or LimeSurvey flow
+            as a redirect, passing the participant key as a URL parameter.
+            The platform handles all conjoint task sequencing and response storage.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <h3>Collect and export</h3>
+          <p>
+            Monitor completion rates on the survey detail page.
+            Download the export bundle at any time: a long-format response CSV, the
+            design matrix, all stimuli with prompts, a <code>design.yaml</code>
+            configuration record, and an R analysis starter script.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Technical requirements                                                 -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="get-started" style="background:var(--gray-50)">
+  <div class="container">
+    <h2>Hosting requirements</h2>
+    <p>
+      The platform is a self-contained Python web application.
+      No separate database server, message broker, or build pipeline is required.
+      A modest virtual server or research computing allocation is sufficient for most studies.
+    </p>
+
+    <div class="req-grid">
+
+      <div class="req-card">
+        <strong>Server</strong>
+        Any Linux VPS or cloud instance (1 vCPU, 512 MB RAM is enough for typical research loads).
+        The application can also run on institutional HPC login nodes or department servers.
+      </div>
+
+      <div class="req-card">
+        <strong>Python</strong>
+        Python 3.10 or later.
+        All dependencies are listed in <code>requirements.txt</code> and installable with pip.
+        A virtual environment (<code>venv</code>) is recommended.
+      </div>
+
+      <div class="req-card">
+        <strong>Database</strong>
+        SQLite by default—no separate database process needed.
+        The entire dataset is a single file, easy to back up and archive.
+        PostgreSQL or MySQL can be configured for high-concurrency deployments.
+      </div>
+
+      <div class="req-card">
+        <strong>WSGI server</strong>
+        Gunicorn or uWSGI behind a reverse proxy (nginx or Apache) for production.
+        For small studies in secure environments, Flask's built-in server can be used directly.
+      </div>
+
+      <div class="req-card">
+        <strong>ORCID OAuth</strong>
+        A free ORCID public API credential (client ID and secret) is required for researcher
+        authentication. Obviously, participants do not require ORCIDs.
+      </div>
+
+      <div class="req-card">
+        <strong>OpenAI API key (optional)</strong>
+        Required only for textual or visual stimuli generation.
+        Standard API pay-per-use pricing applies.
+        Conventional tabular conjoint surveys work with no external API dependency.
+      </div>
+
+    </div>
+
+    <h3 style="margin-top:2rem; margin-bottom:.75rem">Quick start</h3>
+    <pre><code># 1. Clone the repository
+git clone https://github.com/[REPO].git
+cd conjoint
+
+# 2. Create a virtual environment and install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Set environment variables (see config.py for the full list)
+export SECRET_KEY="your-secret-key"
+export ORCID_CLIENT_ID="your-orcid-client-id"
+export ORCID_CLIENT_SECRET="your-orcid-client-secret"
+export OPENAI_API_KEY="sk-..."   # optional, for AI generated stimuli
+
+# 4. Run the application
+flask run</code></pre>
+
+    <p style="margin-top:1rem; font-size:.88rem; color:var(--gray-500)">
+      Full deployment instructions, including nginx configuration and systemd service setup,
+      are available in the repository's <code>README.md</code>.
+    </p>
+
+    <div class="badge-strip" style="margin-top:1.5rem">
+      <span class="badge badge-green">&#10003; Free to use</span>
+      <span class="badge badge-green">&#10003; No per-response fees</span>
+      <span class="badge badge-blue">🐍 Python 3.10+</span>
+      <span class="badge badge-blue">🌶️ Flask 3</span>
+      <span class="badge badge-blue">🗄️ SQLite / PostgreSQL</span>
+      <span class="badge badge-slate">MIT licence</span>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Citation                                                               -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <h2>How to cite</h2>
+    <p>
+      If you use this platform in your research, please cite the accompanying paper:
+    </p>
+    <pre><code>Brauner, P. (2025). GenerativeConjoint: An Open-Source Conjoint Survey Platform with
+Generative AI Stimuli Creation. [Journal / Conference]. https://doi.org/[DOI]</code></pre>
+    <p style="margin-top:.75rem; font-size:.88rem; color:var(--gray-500)">
+      A BibTeX entry and the preprint are available on the GitHub repository page.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Footer                                                                 -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <p>
+      Developed by <a href="https://orcid.org/0000-0003-2837-5181">Philipp Brauner</a>
+      &mdash; open-source software released under the MIT licence.
+    </p>
+    <p style="margin-top:.4rem">
+      <a href="https://github.com/[REPO]">GitHub</a> &middot;
+      <a href="https://doi.org/[DOI]">Paper</a> &middot;
+      <a href="https://orcid.org/0000-0003-2837-5181">ORCID</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
