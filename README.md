@@ -64,7 +64,7 @@ Example study and data can be found here: https://osf.io/6cqhx/overview
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/[YOUR_USERNAME]/GenerativeConjoint.git
+git clone https://github.com/braunerphilipp/GenerativeConjoint.git
 cd GenerativeConjoint
 python3 -m venv venv
 source venv/bin/activate
