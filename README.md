@@ -128,7 +128,7 @@ Alias /static /path/to/GenerativeConjoint/static
 
 ## Citation
 
-If you use GenerativeConjoint in your research, please cite:
+If you use GenerativeConjoint in your research, please cite the [following preprint](https://arxiv.org/abs/2606.12972) :
 
 ```
 Brauner, P. (2026). From Prompts to Preferences: An Open-Source Platform for Generative AI-Enhanced Conjoint Analysis
