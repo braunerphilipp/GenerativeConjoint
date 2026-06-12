@@ -131,8 +131,8 @@ Alias /static /path/to/GenerativeConjoint/static
 If you use GenerativeConjoint in your research, please cite:
 
 ```
-Brauner, P. (2025). GenerativeConjoint: An Open-Source Conjoint Survey Platform with
-Generative AI Stimuli.
+Brauner, P. (2026). From Prompts to Preferences: An Open-Source Platform for Generative AI-Enhanced Conjoint Analysis
+. https://arxiv.org/abs/2606.12972
 ```
 ---
 
